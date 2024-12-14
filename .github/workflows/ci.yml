@@ -22,6 +22,8 @@ jobs:
 
       - name: Setup chrome
         uses: browser-actions/setup-chrome@v1
+
+      - name: Check chrome version
         run: chrome --version
 
       - name: Verify fmt
