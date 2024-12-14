@@ -1,0 +1,33 @@
+name: Test
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["ubuntu-latest", "macos-latest", "windows-latest"]
+      fail-fast: true
+    steps:
+      - name: Setup V
+        uses: vlang/setup-v@v1.4
+        with:
+          check-latest: true
+
+      - name: Checkout ${{ github.event.repository.name }}
+        uses: actions/checkout@v4
+
+      - name: Setup chrome
+        uses: browser-actions/setup-chrome@v1
+        run: chrome --version
+
+      - name: Verify fmt
+        run: |
+          v fmt -diff .
+          v fmt -verify .
+
+      - name: Run tests
+        run: v test .
