@@ -1,19 +1,16 @@
 # CDV
 
-Drive chrome-devtools in `V` programming language and runs in the headless by default.
+Chrome Devtools Protocol for `V` and runs in the headless by default.
 
-> This is Low-Level API from spec https://chromedevtools.github.io/devtools-protocol.
+> This project based on spec https://chromedevtools.github.io/devtools-protocol.
 
-> Experimental.
-
-## Clone
+## Install
 ```bash
-cd your_project
-git clone https://github.com/herudi/cdv
+v install herudi.cdv
 ```
 ## Example
 ```v
-import cdv
+import herudi.cdv
 
 fn inspect_network(mut browser cdv.Browser) ! {
 	mut tab := browser.new_tab()!

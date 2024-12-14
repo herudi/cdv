@@ -273,33 +273,18 @@ fn (mut bwr Browser) send_method(method string, typ MessageType, message Message
 		method: method
 		id:     id
 	}
-	mut raw := ''
 	data := json.encode(msg)
 	bwr.ws.write_string(data)!
-	if typ == .command {
-		if !msg.wait {
-			th := spawn bwr.recv_from_command(msg)
-			return Result{
-				method: method
-				state:  .pending
-				th:     th
-				id:     id
-				raw:    raw
-			}
-		}
-		return bwr.recv_from_command(msg)!
-	}
 	if !msg.wait {
-		th := spawn bwr.recv_from_event(msg)
+		th := spawn bwr.recv_method(typ, msg)
 		return Result{
 			method: method
 			state:  .pending
 			th:     th
 			id:     id
-			raw:    raw
 		}
 	}
-	return bwr.recv_from_event(msg)!
+	return bwr.recv_method(typ, msg)!
 }
 
 pub fn (mut bwr Browser) send(method string, msg Message) !Result {
@@ -316,18 +301,31 @@ pub fn (mut bwr Browser) on(method string, msg Message) !Result {
 	return bwr.send_method(method, .event, msg)
 }
 
-pub fn (mut bwr Browser) recv_from_command(msg Message) !Result {
-	mut raw, id, method := '', msg.id, msg.method
+pub fn (mut bwr Browser) recv_method(typ MessageType, msg Message) !Result {
+	mut data, id, method := map[string]json.Any{}, msg.id, msg.method
+	mut is_ok := false
 	for {
 		select {
-			data := <-bwr.ch {
-				json_map := json.decode[json.Any](data)!.as_map()
+			raw := <-bwr.ch {
+				data = json.decode[json.Any](raw)!.as_map()
 				if !isnil(msg.cb) {
-					msg.cb(Result{ method: method, id: id, raw: data }, msg.ref)!
+					res := Result{
+						method: method
+						id:     id
+						data:   data
+					}
+					msg.cb(res, msg.ref)!
 				}
-				if json_map['id'] or { json.Any(-2) }.int() == id {
-					raw = data
-					break
+				if typ == .command {
+					if data['id'] or { json.Any(-2) }.int() == id {
+						is_ok = true
+						break
+					}
+				} else if typ == .event {
+					if data['method'] or { json.Any('') }.str() == method {
+						is_ok = true
+						break
+					}
 				}
 			}
 			bwr.timeout_recv {
@@ -335,36 +333,13 @@ pub fn (mut bwr Browser) recv_from_command(msg Message) !Result {
 			}
 		}
 	}
-	return Result{
-		method: method
-		id:     id
-		raw:    raw
-	}
-}
-
-pub fn (mut bwr Browser) recv_from_event(msg Message) !Result {
-	mut raw, id, method := '', msg.id, msg.method
-	for {
-		select {
-			data := <-bwr.ch {
-				json_map := json.decode[json.Any](data)!.as_map()
-				if !isnil(msg.cb) {
-					msg.cb(Result{ method: method, id: id, raw: data }, msg.ref)!
-				}
-				if json_map['method'] or { json.Any('') }.str() == method {
-					raw = data
-					break
-				}
-			}
-			bwr.timeout_recv {
-				return error('connection failed')
-			}
-		}
+	if !is_ok {
+		data = map[string]json.Any{}
 	}
 	return Result{
 		method: method
 		id:     id
-		raw:    raw
+		data:   data
 	}
 }
 
