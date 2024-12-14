@@ -1,7 +1,7 @@
 Module {
 	name: 'cdv'
-	description: 'Chrome Devtools Protocol in V'
-	version: '0.0.0'
+	description: 'Chrome Devtools Protocol for V and runs in the Headless by default.'
+	version: '0.0.1'
 	license: 'MIT'
 	dependencies: []
 }

@@ -1,6 +1,6 @@
 # CDV
 
-Chrome Devtools Protocol for `V` and runs in the headless by default.
+Chrome Devtools Protocol for `V` and runs in the `Headless` by default.
 
 > This project based on spec https://chromedevtools.github.io/devtools-protocol.
 
