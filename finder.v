@@ -5,9 +5,10 @@ pub fn find_chrome() !string {
 	$if macos {
 		list = [
 			'Google Chrome',
+			'Chromium',
 		]
 	} $else $if windows {
-		list = ['chrome.exe']
+		list = ['chrome.exe', 'chromium.exe']
 	} $else {
 		list = [
 			'google-chrome',
