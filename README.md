@@ -6,11 +6,11 @@ Chrome Devtools Protocol for `V` and runs in the `Headless` by default.
 
 ## Install
 ```bash
-v install herudi.cdv
+v install --git https://github.com/herudi/cdv
 ```
 ## Example
 ```v
-import herudi.cdv
+import cdv
 
 fn inspect_network(mut browser cdv.Browser) ! {
 	mut tab := browser.new_tab()!

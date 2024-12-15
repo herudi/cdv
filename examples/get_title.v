@@ -1,4 +1,4 @@
-import herudi.cdv
+import cdv
 
 fn get_title(mut browser cdv.Browser) !string {
 	mut tab := browser.new_tab()!
@@ -21,6 +21,8 @@ fn main() {
 		browser.close()
 		panic(err)
 	}
+
+	println(title)
 
 	assert typeof(title).name == 'string'
 	assert title.to_lower().contains('example') == true

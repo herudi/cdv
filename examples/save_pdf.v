@@ -1,4 +1,4 @@
-import herudi.cdv
+import cdv
 
 fn save_pdf(mut browser cdv.Browser) ! {
 	mut tab := browser.new_tab()!

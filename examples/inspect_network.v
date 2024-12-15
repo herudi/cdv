@@ -1,4 +1,4 @@
-import herudi.cdv
+import cdv
 
 fn inspect_network(mut browser cdv.Browser) ! {
 	mut tab := browser.new_tab()!
