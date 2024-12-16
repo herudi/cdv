@@ -1532,7 +1532,7 @@ pub:
 pub struct CacheStorageRequestCachedResponseParams {
 pub:
 	cache_id        string     @[json: 'cacheId'; required]
-	requesturl      string     @[json: 'requestURL'; required]
+	request_url     string     @[json: 'requestURL'; required]
 	request_headers []json.Any @[json: 'requestHeaders'; required]
 	cb              EventFunc = unsafe { nil }  @[json: '-']
 	wait            bool      = true       @[json: '-']
@@ -1988,11 +1988,11 @@ pub:
 @[params]
 pub struct DOMSetOuterHTMLParams {
 pub:
-	node_id   int       @[json: 'nodeId'; required]
-	outerhtml string    @[json: 'outerHTML'; required]
-	cb        EventFunc = unsafe { nil } @[json: '-']
-	wait      bool      = true      @[json: '-']
-	ref       voidptr   = unsafe { nil }   @[json: '-']
+	node_id    int       @[json: 'nodeId'; required]
+	outer_html string    @[json: 'outerHTML'; required]
+	cb         EventFunc = unsafe { nil } @[json: '-']
+	wait       bool      = true      @[json: '-']
+	ref        voidptr   = unsafe { nil }   @[json: '-']
 }
 
 @[params]
@@ -3511,13 +3511,13 @@ pub:
 @[params]
 pub struct PageAddScriptToEvaluateOnNewDocumentParams {
 pub:
-	source                  string    @[json: 'source'; required]
-	world_name              ?string   @[json: 'worldName']
-	include_command_lineapi ?bool     @[json: 'includeCommandLineAPI']
-	run_immediately         ?bool     @[json: 'runImmediately']
-	cb                      EventFunc = unsafe { nil } @[json: '-']
-	wait                    bool      = true      @[json: '-']
-	ref                     voidptr   = unsafe { nil }   @[json: '-']
+	source                   string    @[json: 'source'; required]
+	world_name               ?string   @[json: 'worldName']
+	include_command_line_api ?bool     @[json: 'includeCommandLineAPI']
+	run_immediately          ?bool     @[json: 'runImmediately']
+	cb                       EventFunc = unsafe { nil } @[json: '-']
+	wait                     bool      = true      @[json: '-']
+	ref                      voidptr   = unsafe { nil }   @[json: '-']
 }
 
 @[params]
@@ -4033,19 +4033,19 @@ pub:
 @[params]
 pub struct ServiceWorkerSkipWaitingParams {
 pub:
-	scopeurl string    @[json: 'scopeURL'; required]
-	cb       EventFunc = unsafe { nil } @[json: '-']
-	wait     bool      = true      @[json: '-']
-	ref      voidptr   = unsafe { nil }   @[json: '-']
+	scope_url string    @[json: 'scopeURL'; required]
+	cb        EventFunc = unsafe { nil } @[json: '-']
+	wait      bool      = true      @[json: '-']
+	ref       voidptr   = unsafe { nil }   @[json: '-']
 }
 
 @[params]
 pub struct ServiceWorkerStartWorkerParams {
 pub:
-	scopeurl string    @[json: 'scopeURL'; required]
-	cb       EventFunc = unsafe { nil } @[json: '-']
-	wait     bool      = true      @[json: '-']
-	ref      voidptr   = unsafe { nil }   @[json: '-']
+	scope_url string    @[json: 'scopeURL'; required]
+	cb        EventFunc = unsafe { nil } @[json: '-']
+	wait      bool      = true      @[json: '-']
+	ref       voidptr   = unsafe { nil }   @[json: '-']
 }
 
 @[params]
@@ -4060,19 +4060,19 @@ pub:
 @[params]
 pub struct ServiceWorkerUnregisterParams {
 pub:
-	scopeurl string    @[json: 'scopeURL'; required]
-	cb       EventFunc = unsafe { nil } @[json: '-']
-	wait     bool      = true      @[json: '-']
-	ref      voidptr   = unsafe { nil }   @[json: '-']
+	scope_url string    @[json: 'scopeURL'; required]
+	cb        EventFunc = unsafe { nil } @[json: '-']
+	wait      bool      = true      @[json: '-']
+	ref       voidptr   = unsafe { nil }   @[json: '-']
 }
 
 @[params]
 pub struct ServiceWorkerUpdateRegistrationParams {
 pub:
-	scopeurl string    @[json: 'scopeURL'; required]
-	cb       EventFunc = unsafe { nil } @[json: '-']
-	wait     bool      = true      @[json: '-']
-	ref      voidptr   = unsafe { nil }   @[json: '-']
+	scope_url string    @[json: 'scopeURL'; required]
+	cb        EventFunc = unsafe { nil } @[json: '-']
+	wait      bool      = true      @[json: '-']
+	ref       voidptr   = unsafe { nil }   @[json: '-']
 }
 
 @[params]
@@ -4989,18 +4989,18 @@ pub:
 @[params]
 pub struct DebuggerEvaluateOnCallFrameParams {
 pub:
-	call_frame_id           string    @[json: 'callFrameId'; required]
-	expression              string    @[json: 'expression'; required]
-	object_group            ?string   @[json: 'objectGroup']
-	include_command_lineapi ?bool     @[json: 'includeCommandLineAPI']
-	silent                  ?bool     @[json: 'silent']
-	return_by_value         ?bool     @[json: 'returnByValue']
-	generate_preview        ?bool     @[json: 'generatePreview']
-	throw_on_side_effect    ?bool     @[json: 'throwOnSideEffect']
-	timeout                 ?f64      @[json: 'timeout']
-	cb                      EventFunc = unsafe { nil } @[json: '-']
-	wait                    bool      = true      @[json: '-']
-	ref                     voidptr   = unsafe { nil }   @[json: '-']
+	call_frame_id            string    @[json: 'callFrameId'; required]
+	expression               string    @[json: 'expression'; required]
+	object_group             ?string   @[json: 'objectGroup']
+	include_command_line_api ?bool     @[json: 'includeCommandLineAPI']
+	silent                   ?bool     @[json: 'silent']
+	return_by_value          ?bool     @[json: 'returnByValue']
+	generate_preview         ?bool     @[json: 'generatePreview']
+	throw_on_side_effect     ?bool     @[json: 'throwOnSideEffect']
+	timeout                  ?f64      @[json: 'timeout']
+	cb                       EventFunc = unsafe { nil } @[json: '-']
+	wait                     bool      = true      @[json: '-']
+	ref                      voidptr   = unsafe { nil }   @[json: '-']
 }
 
 @[params]
@@ -5396,7 +5396,7 @@ pub:
 pub struct RuntimeCompileScriptParams {
 pub:
 	expression           string    @[json: 'expression'; required]
-	sourceurl            string    @[json: 'sourceURL'; required]
+	source_url           string    @[json: 'sourceURL'; required]
 	persist_script       bool      @[json: 'persistScript'; required]
 	execution_context_id ?int      @[json: 'executionContextId']
 	cb                   EventFunc = unsafe { nil } @[json: '-']
@@ -5409,7 +5409,7 @@ pub struct RuntimeEvaluateParams {
 pub:
 	expression                       string               @[json: 'expression'; required]
 	object_group                     ?string              @[json: 'objectGroup']
-	include_command_lineapi          ?bool                @[json: 'includeCommandLineAPI']
+	include_command_line_api         ?bool                @[json: 'includeCommandLineAPI']
 	silent                           ?bool                @[json: 'silent']
 	context_id                       ?int                 @[json: 'contextId']
 	return_by_value                  ?bool                @[json: 'returnByValue']
@@ -5481,17 +5481,17 @@ pub:
 @[params]
 pub struct RuntimeRunScriptParams {
 pub:
-	script_id               string    @[json: 'scriptId'; required]
-	execution_context_id    ?int      @[json: 'executionContextId']
-	object_group            ?string   @[json: 'objectGroup']
-	silent                  ?bool     @[json: 'silent']
-	include_command_lineapi ?bool     @[json: 'includeCommandLineAPI']
-	return_by_value         ?bool     @[json: 'returnByValue']
-	generate_preview        ?bool     @[json: 'generatePreview']
-	await_promise           ?bool     @[json: 'awaitPromise']
-	cb                      EventFunc = unsafe { nil } @[json: '-']
-	wait                    bool      = true      @[json: '-']
-	ref                     voidptr   = unsafe { nil }   @[json: '-']
+	script_id                string    @[json: 'scriptId'; required]
+	execution_context_id     ?int      @[json: 'executionContextId']
+	object_group             ?string   @[json: 'objectGroup']
+	silent                   ?bool     @[json: 'silent']
+	include_command_line_api ?bool     @[json: 'includeCommandLineAPI']
+	return_by_value          ?bool     @[json: 'returnByValue']
+	generate_preview         ?bool     @[json: 'generatePreview']
+	await_promise            ?bool     @[json: 'awaitPromise']
+	cb                       EventFunc = unsafe { nil } @[json: '-']
+	wait                     bool      = true      @[json: '-']
+	ref                      voidptr   = unsafe { nil }   @[json: '-']
 }
 
 @[params]
@@ -5595,7 +5595,7 @@ pub fn (mut p AccessibilityDomain) enable(msg Message) !Result {
 }
 
 // Fetches the accessibility node and partial accessibility tree for this DOM node, if it exists. see https://chromedevtools.github.io/devtools-protocol/tot/Accessibility/#method-getPartialAXTree.
-pub fn (mut p AccessibilityDomain) get_partialax_tree(par AccessibilityGetPartialAXTreeParams) !Result {
+pub fn (mut p AccessibilityDomain) get_partial_ax_tree(par AccessibilityGetPartialAXTreeParams) !Result {
 	params := struct_to_map(par)!
 	return p.tab.send('Accessibility.getPartialAXTree',
 		params: params
@@ -5606,7 +5606,7 @@ pub fn (mut p AccessibilityDomain) get_partialax_tree(par AccessibilityGetPartia
 }
 
 // Fetches the entire accessibility tree for the root Document see https://chromedevtools.github.io/devtools-protocol/tot/Accessibility/#method-getFullAXTree.
-pub fn (mut p AccessibilityDomain) get_fullax_tree(par AccessibilityGetFullAXTreeParams) !Result {
+pub fn (mut p AccessibilityDomain) get_full_ax_tree(par AccessibilityGetFullAXTreeParams) !Result {
 	params := struct_to_map(par)!
 	return p.tab.send('Accessibility.getFullAXTree',
 		params: params
@@ -5618,7 +5618,7 @@ pub fn (mut p AccessibilityDomain) get_fullax_tree(par AccessibilityGetFullAXTre
 
 // Fetches the root node.
 // Requires `enable()` to have been called previously. see https://chromedevtools.github.io/devtools-protocol/tot/Accessibility/#method-getRootAXNode.
-pub fn (mut p AccessibilityDomain) get_rootax_node(par AccessibilityGetRootAXNodeParams) !Result {
+pub fn (mut p AccessibilityDomain) get_root_ax_node(par AccessibilityGetRootAXNodeParams) !Result {
 	params := struct_to_map(par)!
 	return p.tab.send('Accessibility.getRootAXNode',
 		params: params
@@ -5630,7 +5630,7 @@ pub fn (mut p AccessibilityDomain) get_rootax_node(par AccessibilityGetRootAXNod
 
 // Fetches a node and all ancestors up to and including the root.
 // Requires `enable()` to have been called previously. see https://chromedevtools.github.io/devtools-protocol/tot/Accessibility/#method-getAXNodeAndAncestors.
-pub fn (mut p AccessibilityDomain) getax_node_and_ancestors(par AccessibilityGetAXNodeAndAncestorsParams) !Result {
+pub fn (mut p AccessibilityDomain) get_ax_node_and_ancestors(par AccessibilityGetAXNodeAndAncestorsParams) !Result {
 	params := struct_to_map(par)!
 	return p.tab.send('Accessibility.getAXNodeAndAncestors',
 		params: params
@@ -5642,7 +5642,7 @@ pub fn (mut p AccessibilityDomain) getax_node_and_ancestors(par AccessibilityGet
 
 // Fetches a particular accessibility node by AXNodeId.
 // Requires `enable()` to have been called previously. see https://chromedevtools.github.io/devtools-protocol/tot/Accessibility/#method-getChildAXNodes.
-pub fn (mut p AccessibilityDomain) get_childax_nodes(par AccessibilityGetChildAXNodesParams) !Result {
+pub fn (mut p AccessibilityDomain) get_child_ax_nodes(par AccessibilityGetChildAXNodesParams) !Result {
 	params := struct_to_map(par)!
 	return p.tab.send('Accessibility.getChildAXNodes',
 		params: params
@@ -5657,7 +5657,7 @@ pub fn (mut p AccessibilityDomain) get_childax_nodes(par AccessibilityGetChildAX
 // ignored for accessibility, and returns those that match the specified name and role. If no DOM
 // node is specified, or the DOM node does not exist, the command returns an error. If neither
 //`accessibleName` or `role` is specified, it returns all the accessibility nodes in the subtree. see https://chromedevtools.github.io/devtools-protocol/tot/Accessibility/#method-queryAXTree.
-pub fn (mut p AccessibilityDomain) queryax_tree(par AccessibilityQueryAXTreeParams) !Result {
+pub fn (mut p AccessibilityDomain) query_ax_tree(par AccessibilityQueryAXTreeParams) !Result {
 	params := struct_to_map(par)!
 	return p.tab.send('Accessibility.queryAXTree',
 		params: params
@@ -7090,7 +7090,7 @@ pub fn (mut p DOMDomain) get_node_for_location(par DOMGetNodeForLocationParams) 
 }
 
 // Returns node's HTML markup. see https://chromedevtools.github.io/devtools-protocol/tot/DOM/#method-getOuterHTML.
-pub fn (mut p DOMDomain) get_outerhtml(par DOMGetOuterHTMLParams) !Result {
+pub fn (mut p DOMDomain) get_outer_html(par DOMGetOuterHTMLParams) !Result {
 	params := struct_to_map(par)!
 	return p.tab.send('DOM.getOuterHTML',
 		params: params
@@ -7400,7 +7400,7 @@ pub fn (mut p DOMDomain) set_node_value(par DOMSetNodeValueParams) !Result {
 }
 
 // Sets node HTML markup, returns new node id. see https://chromedevtools.github.io/devtools-protocol/tot/DOM/#method-setOuterHTML.
-pub fn (mut p DOMDomain) set_outerhtml(par DOMSetOuterHTMLParams) !Result {
+pub fn (mut p DOMDomain) set_outer_html(par DOMSetOuterHTMLParams) !Result {
 	params := struct_to_map(par)!
 	return p.tab.send('DOM.setOuterHTML',
 		params: params
@@ -7618,7 +7618,7 @@ pub fn (mut p DOMDebuggerDomain) remove_instrumentation_breakpoint(par DOMDebugg
 }
 
 // Removes breakpoint from XMLHttpRequest. see https://chromedevtools.github.io/devtools-protocol/tot/DOMDebugger/#method-removeXHRBreakpoint.
-pub fn (mut p DOMDebuggerDomain) removexhr_breakpoint(par DOMDebuggerRemoveXHRBreakpointParams) !Result {
+pub fn (mut p DOMDebuggerDomain) remove_xhr_breakpoint(par DOMDebuggerRemoveXHRBreakpointParams) !Result {
 	params := struct_to_map(par)!
 	return p.tab.send('DOMDebugger.removeXHRBreakpoint',
 		params: params
@@ -7673,7 +7673,7 @@ pub fn (mut p DOMDebuggerDomain) set_instrumentation_breakpoint(par DOMDebuggerS
 }
 
 // Sets breakpoint on XMLHttpRequest. see https://chromedevtools.github.io/devtools-protocol/tot/DOMDebugger/#method-setXHRBreakpoint.
-pub fn (mut p DOMDebuggerDomain) setxhr_breakpoint(par DOMDebuggerSetXHRBreakpointParams) !Result {
+pub fn (mut p DOMDebuggerDomain) set_xhr_breakpoint(par DOMDebuggerSetXHRBreakpointParams) !Result {
 	params := struct_to_map(par)!
 	return p.tab.send('DOMDebugger.setXHRBreakpoint',
 		params: params
@@ -7899,7 +7899,7 @@ pub fn (mut p DatabaseDomain) enable(msg Message) !Result {
 	return p.tab.send('Database.enable', msg)!
 }
 
-pub fn (mut p DatabaseDomain) executesql(par DatabaseExecuteSQLParams) !Result {
+pub fn (mut p DatabaseDomain) execute_sql(par DatabaseExecuteSQLParams) !Result {
 	params := struct_to_map(par)!
 	return p.tab.send('Database.executeSQL',
 		params: params
@@ -8023,7 +8023,7 @@ pub fn (mut p EmulationDomain) set_auto_dark_mode_override(par EmulationSetAutoD
 }
 
 // Enables CPU throttling to emulate slow CPUs. see https://chromedevtools.github.io/devtools-protocol/tot/Emulation/#method-setCPUThrottlingRate.
-pub fn (mut p EmulationDomain) setcpu_throttling_rate(par EmulationSetCPUThrottlingRateParams) !Result {
+pub fn (mut p EmulationDomain) set_cpu_throttling_rate(par EmulationSetCPUThrottlingRateParams) !Result {
 	params := struct_to_map(par)!
 	return p.tab.send('Emulation.setCPUThrottlingRate',
 		params: params
@@ -9284,7 +9284,7 @@ pub fn (mut p NetworkDomain) take_response_body_for_interception_as_stream(par N
 // This method sends a new XMLHttpRequest which is identical to the original one. The following
 // parameters should be identical: method, url, async, request body, extra headers, withCredentials
 // attribute, user, password. see https://chromedevtools.github.io/devtools-protocol/tot/Network/#method-replayXHR.
-pub fn (mut p NetworkDomain) replayxhr(par NetworkReplayXHRParams) !Result {
+pub fn (mut p NetworkDomain) replay_xhr(par NetworkReplayXHRParams) !Result {
 	params := struct_to_map(par)!
 	return p.tab.send('Network.replayXHR',
 		params: params
@@ -9306,7 +9306,7 @@ pub fn (mut p NetworkDomain) search_in_response_body(par NetworkSearchInResponse
 }
 
 // Blocks URLs from loading. see https://chromedevtools.github.io/devtools-protocol/tot/Network/#method-setBlockedURLs.
-pub fn (mut p NetworkDomain) set_blockedur_ls(par NetworkSetBlockedURLsParams) !Result {
+pub fn (mut p NetworkDomain) set_blocked_ur_ls(par NetworkSetBlockedURLsParams) !Result {
 	params := struct_to_map(par)!
 	return p.tab.send('Network.setBlockedURLs',
 		params: params
@@ -9361,7 +9361,7 @@ pub fn (mut p NetworkDomain) set_cookies(par NetworkSetCookiesParams) !Result {
 }
 
 // Specifies whether to always send extra HTTP headers with the requests from this page. see https://chromedevtools.github.io/devtools-protocol/tot/Network/#method-setExtraHTTPHeaders.
-pub fn (mut p NetworkDomain) set_extrahttp_headers(par NetworkSetExtraHTTPHeadersParams) !Result {
+pub fn (mut p NetworkDomain) set_extra_http_headers(par NetworkSetExtraHTTPHeadersParams) !Result {
 	params := struct_to_map(par)!
 	return p.tab.send('Network.setExtraHTTPHeaders',
 		params: params
@@ -9803,7 +9803,7 @@ pub fn (mut p OverlayDomain) set_show_debug_borders(par OverlaySetShowDebugBorde
 }
 
 // Requests that backend shows the FPS counter see https://chromedevtools.github.io/devtools-protocol/tot/Overlay/#method-setShowFPSCounter.
-pub fn (mut p OverlayDomain) set_showfps_counter(par OverlaySetShowFPSCounterParams) !Result {
+pub fn (mut p OverlayDomain) set_show_fps_counter(par OverlaySetShowFPSCounterParams) !Result {
 	params := struct_to_map(par)!
 	return p.tab.send('Overlay.setShowFPSCounter',
 		params: params
@@ -10501,7 +10501,7 @@ pub fn (mut p PageDomain) clear_compilation_cache(msg Message) !Result {
 
 // Sets the Secure Payment Confirmation transaction mode.
 // https://w3c.github.io/secure-payment-confirmation/#sctn-automation-set-spc-transaction-mode see https://chromedevtools.github.io/devtools-protocol/tot/Page/#method-setSPCTransactionMode.
-pub fn (mut p PageDomain) setspc_transaction_mode(par PageSetSPCTransactionModeParams) !Result {
+pub fn (mut p PageDomain) set_spc_transaction_mode(par PageSetSPCTransactionModeParams) !Result {
 	params := struct_to_map(par)!
 	return p.tab.send('Page.setSPCTransactionMode',
 		params: params
@@ -10513,7 +10513,7 @@ pub fn (mut p PageDomain) setspc_transaction_mode(par PageSetSPCTransactionModeP
 
 // Extensions for Custom Handlers API:
 // https://html.spec.whatwg.org/multipage/system-state.html#rph-automation see https://chromedevtools.github.io/devtools-protocol/tot/Page/#method-setRPHRegistrationMode.
-pub fn (mut p PageDomain) setrph_registration_mode(par PageSetRPHRegistrationModeParams) !Result {
+pub fn (mut p PageDomain) set_rph_registration_mode(par PageSetRPHRegistrationModeParams) !Result {
 	params := struct_to_map(par)!
 	return p.tab.send('Page.setRPHRegistrationMode',
 		params: params
@@ -13750,7 +13750,7 @@ pub fn (mut p RuntimeDomain) binding_called(msg Message) !Result {
 }
 
 // Issued when console API was called. see https://chromedevtools.github.io/devtools-protocol/tot/Runtime/#event-consoleAPICalled.
-pub fn (mut p RuntimeDomain) consoleapi_called(msg Message) !Result {
+pub fn (mut p RuntimeDomain) console_api_called(msg Message) !Result {
 	return p.tab.send('Runtime.consoleAPICalled', msg)!
 }
 

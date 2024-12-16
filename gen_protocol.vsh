@@ -10,7 +10,62 @@ const base_doc = 'https://chromedevtools.github.io/devtools-protocol/tot/'
 const browser_proto_url = 'https://raw.githubusercontent.com/ChromeDevTools/devtools-protocol/refs/heads/master/json/browser_protocol.json'
 const js_proto_url = 'https://raw.githubusercontent.com/ChromeDevTools/devtools-protocol/refs/heads/master/json/js_protocol.json'
 
-const reps = ['IO', 'Io', 'DOM', 'Dom', 'CSS', 'Css', 'DB', 'Db', 'PDF', 'Pdf', 'CSP', 'Csp']
+const reps = [
+	// io
+	'IO',
+	'Io',
+	// dom
+	'DOM',
+	'Dom',
+	// css
+	'CSS',
+	'Css',
+	// db
+	'DB',
+	'Db',
+	// pdf
+	'PDF',
+	'Pdf',
+	// csp
+	'CSP',
+	'Csp',
+	// html
+	'HTML',
+	'Html',
+	// ax
+	'AX',
+	'Ax',
+	// api
+	'API',
+	'Api',
+	// xhr
+	'XHR',
+	'Xhr',
+	// sql
+	'SQL',
+	'Sql',
+	// cpu
+	'CPU',
+	'Cpu',
+	// ur
+	'UR',
+	'Ur',
+	// http
+	'HTTP',
+	'Http',
+	// fps
+	'FPS',
+	'Fps',
+	// Spc
+	'SPC',
+	'Spc',
+	// RPH
+	'RPH',
+	'Rph',
+	// pwa
+	'PWA',
+	'Pwa',
+]
 const rep_docs = ['\n', '\n//', "'", "'"]
 const mutate_types = {
 	'string':  'string'
@@ -107,7 +162,7 @@ pub struct ConfigCDVDomain {
 	for a in domains {
 		data := a.as_map()
 		name := data['domain']!.str()
-		println('${name} done...')
+		println('domain => ${name} done...')
 		types_any := data['types'] or { '' }
 		if types_any.str() != '' {
 			mut types := types_any.arr()
@@ -198,6 +253,7 @@ pub fn (mut p ${name}Domain) ${snake_method}(msg Message) !Result {
 	return p.tab.send("${method}", msg)!
 }\n'
 					}
+					println('command => ${method} done...')
 				}
 			}
 		}
@@ -220,6 +276,7 @@ pub fn (mut p ${name}Domain) ${snake_method}(msg Message) !Result {
 					c_func += '
 ${ev_desc_str}
 pub fn (mut p ${name}Domain) ${snake_method}(msg Message) !Result {return p.tab.send("${method}", msg)! }\n'
+					println('event => ${method} done...')
 				}
 			}
 		}
