@@ -11,6 +11,15 @@ const base_cache = os.cache_dir() + '/cdv'
 
 pub enum BrowserType {
 	chrome
+	firefox
+	edge
+}
+
+pub struct TabMap {
+pub mut:
+	next_id    int
+	session_id string
+	deps       []string
 }
 
 @[heap]
@@ -20,20 +29,23 @@ pub:
 	args         []string
 	port         int
 	ch           chan string
-	target_id    string
 	timeout_recv i64
+	ws_url       string
 pub mut:
-	next_id  int               = 1
-	ws       &websocket.Client = unsafe { nil }
-	base_url string
+	target_id string
+	next_id   int               = 1
+	ws        &websocket.Client = unsafe { nil }
+	base_url  string
+	tab_map   map[string]TabMap
 mut:
-	tabs    [][]string
 	process &os.Process = unsafe { nil }
 }
 
 @[params]
 pub struct Config {
 pub:
+	base_url        string
+	ws_url          string
 	args            []string
 	executable_path ?string
 	port            int = 9222
@@ -41,10 +53,8 @@ pub:
 	headless        bool   = true
 	host            string = 'localhost'
 	secure          bool
-	timeout         i64 = 1 * time.second
-	timeout_recv    i64 = 60 * time.second
-	open_browser    bool
-	base_url        string
+	timeout         i64         = 1 * time.second
+	timeout_recv    i64         = 60 * time.second
 	typ             BrowserType = .chrome
 	incognito       bool
 }
@@ -65,34 +75,24 @@ fn create_connection(opts Config) !&Browser {
 	base_url := get_base_url(opts)
 	url := base_url + '/json'
 	mut v_res := http.Response{}
-	for {
-		time.sleep(opts.timeout)
-		v_res = get_version_hell(url + '/version')
-		if v_res.status_code == 200 {
-			break
-		}
-	}
-	ws_url := json.decode[json.Any](v_res.body)!.as_map()['webSocketDebuggerUrl']!.str()
+	mut ws_url := opts.ws_url
 	if ws_url == '' {
-		return error('cannot find socket url.')
-	}
-	res_target := fetch_data(url, .get)!
-	targets := json.decode[json.Any](res_target.body)!.arr()
-	mut target_id := ''
-	for target in targets {
-		target_map := target.as_map()
-		if target_map['type']!.str() == 'page' {
-			target_id = target_map['id']!.str()
-			break
+		for {
+			time.sleep(opts.timeout)
+			v_res = get_version_hell(url + '/version')
+			if v_res.status_code == 200 {
+				break
+			}
 		}
-	}
-	if target_id == '' {
-		return error('no target_id detected!')
+		ws_url = json.decode[json.Any](v_res.body)!.as_map()['webSocketDebuggerUrl']!.str()
+		if ws_url == '' {
+			return error('cannot find socket url.')
+		}
 	}
 	ch := chan string{}
 	mut ws := websocket.new_client(ws_url, logger: error_logger)!
 	mut bwr := &Browser{
-		target_id:    target_id
+		ws_url:       ws_url
 		ch:           ch
 		ws:           ws
 		args:         opts.args
@@ -117,6 +117,20 @@ fn create_connection(opts Config) !&Browser {
 	ws.connect()!
 	spawn ws.listen()
 	wait_for_idle(on_open.ch)!
+	result := bwr.send('Target.getTargets')!.result()
+	targets := result['targetInfos']!.arr()
+	mut target_id := ''
+	for target in targets {
+		target_map := target.as_map()
+		if target_map['type'] or { '' }.str() == 'page' {
+			target_id = target_map['targetId'] or { '' }.str()
+			break
+		}
+	}
+	if target_id == '' {
+		return error('no target_id detected!')
+	}
+	bwr.target_id = target_id
 	return bwr
 }
 
@@ -137,16 +151,19 @@ fn wait_for_idle(ch chan int) ! {
 }
 
 pub fn connect(opts Config) !&Browser {
-	if opts.open_browser {
-		return open_browser(opts)!
-	}
 	return create_connection(opts)!
 }
 
-pub fn open_browser(opts Config) !&Browser {
-	executable_path := opts.executable_path or {
-		if opts.typ == .chrome { find_chrome()! } else { '' }
+fn get_typ_browser(typ BrowserType) !string {
+	return match typ {
+		.chrome { find_chrome()! }
+		.edge { find_edge()! }
+		.firefox { find_firefox()! }
 	}
+}
+
+pub fn open_browser(opts Config) !&Browser {
+	executable_path := opts.executable_path or { get_typ_browser(opts.typ)! }
 
 	mut args := []string{}
 	if executable_path == '' {
@@ -200,10 +217,22 @@ pub fn open_browser(opts Config) !&Browser {
 }
 
 pub fn open_chrome(opts Config) !&Browser {
-	return open_browser(opts)
+	return open_browser(Config{ ...opts, typ: .chrome })
+}
+
+pub fn open_edge(opts Config) !&Browser {
+	return open_browser(Config{ ...opts, typ: .edge })
 }
 
 pub fn open_firefox(opts Config) !&Browser {
+	return open_browser(Config{ ...opts, typ: .firefox })
+}
+
+pub fn open_safari(opts Config) !&Browser {
+	return error('not supported')
+}
+
+pub fn open_opera(opts Config) !&Browser {
 	return error('not supported')
 }
 
@@ -303,7 +332,7 @@ pub fn (mut bwr Browser) on(method string, msg Message) !Result {
 
 pub fn (mut bwr Browser) recv_method(typ MessageType, msg Message) !Result {
 	mut data, id, method := map[string]json.Any{}, msg.id, msg.method
-	mut is_ok := false
+	mut is_ok, session_id := false, msg.session_id or { '' }
 	for {
 		select {
 			raw := <-bwr.ch {
@@ -316,13 +345,15 @@ pub fn (mut bwr Browser) recv_method(typ MessageType, msg Message) !Result {
 					}
 					msg.cb(res, msg.ref)!
 				}
+				recv_session := data['sessionId'] or { '' }.str()
 				if typ == .command {
-					if data['id'] or { json.Any(-2) }.int() == id {
+					if data['id'] or { json.Any(-2) }.int() == id && recv_session == session_id {
 						is_ok = true
 						break
 					}
 				} else if typ == .event {
-					if data['method'] or { json.Any('') }.str() == method {
+					if data['method'] or { json.Any('') }.str() == method
+						&& recv_session == session_id {
 						is_ok = true
 						break
 					}
@@ -363,19 +394,25 @@ pub fn (mut bwr Browser) close() {
 	}
 }
 
-pub fn (mut bwr Browser) get_tab(target_id string) !&Tab {
-	for mut arr in bwr.tabs {
-		if arr[0] == target_id {
-			res := bwr.get_active_tab(target_id: target_id)!
-			if res.status_code != 200 {
-				return error('error when activate target "${target_id}"')
-			}
-			return &Tab{
-				target_id:  target_id
-				session_id: arr[1]
-				browser:    bwr
-			}
+pub fn (mut bwr Browser) tab_by_target_id(target_id string) !&Tab {
+	if target_id in bwr.tab_map {
+		res := bwr.get_active_tab(target_id: target_id)!
+		if res.status_code != 200 {
+			return error('error when activate target "${target_id}"')
+		}
+		tab_map := bwr.tab_map[target_id]
+		return &Tab{
+			next_id:    tab_map.next_id
+			deps:       tab_map.deps
+			target_id:  target_id
+			session_id: tab_map.session_id
+			browser:    bwr
 		}
 	}
 	return error('cannot find tab for target_id "${target_id}"')
+}
+
+pub fn (mut bwr Browser) tab_at(idx int) !&Tab {
+	target_id := bwr.tab_map.keys()[idx] or { '' }
+	return bwr.tab_by_target_id(target_id)
 }

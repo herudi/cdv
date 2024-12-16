@@ -2,7 +2,16 @@
 
 Chrome Devtools Protocol for `V` and runs in the `Headless` by default.
 
-> This project based on spec https://chromedevtools.github.io/devtools-protocol.
+> This project based on CDP spec https://chromedevtools.github.io/devtools-protocol.
+
+> For BiDi, soon...
+
+## Browser Support
+- chrome/chromium
+- Edge
+- Firefox
+- Safari <i>soon...</i>
+- Opera <i>soon...</i>
 
 ## Install
 ```bash
@@ -56,6 +65,8 @@ fn save_pdf(mut browser cdv.Browser) ! {
 
 fn main() {
 	mut browser := cdv.open_chrome()!
+	// mut browser := cdv.open_firefox()!
+	// mut browser := cdv.open_edge()!
 
 	defer { browser.close() }
 

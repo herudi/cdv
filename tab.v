@@ -5,6 +5,7 @@ import x.json2 as json
 @[heap]
 pub struct Tab {
 pub mut:
+	next_id    int = 1
 	target_id  string
 	browser    &Browser = unsafe { nil }
 	session_id string
@@ -12,7 +13,7 @@ pub mut:
 }
 
 pub fn (mut bwr Browser) new_tab() !&Tab {
-	has_init := bwr.tabs.len == 0
+	has_init := bwr.tab_map.len == 0
 	mut target_id := ''
 	if has_init {
 		target_id = bwr.target_id
@@ -36,17 +37,28 @@ pub fn (mut bwr Browser) new_tab() !&Tab {
 		browser:    bwr
 		session_id: session_id
 	}
-
-	bwr.tabs << [target_id, session_id]
+	bwr.tab_map[target_id] = TabMap{
+		session_id: session_id
+	}
 	return tab
 }
 
 pub fn (mut tab Tab) send(method string, msg Message) !Result {
-	return tab.browser.send(method, Message{ ...msg, session_id: tab.session_id })!
+	id := tab.get_next_id(msg.id)
+	target_id := tab.target_id
+	if target_id in tab.browser.tab_map {
+		tab.browser.tab_map[target_id].next_id = tab.next_id
+	}
+	return tab.browser.send(method, Message{ ...msg, id: id, session_id: tab.session_id })!
 }
 
 pub fn (mut tab Tab) on(method string, msg Message) !Result {
-	return tab.browser.on(method, Message{ ...msg, session_id: tab.session_id })!
+	id := tab.get_next_id(msg.id)
+	target_id := tab.target_id
+	if target_id in tab.browser.tab_map {
+		tab.browser.tab_map[target_id].next_id = tab.next_id
+	}
+	return tab.browser.on(method, Message{ ...msg, id: id, session_id: tab.session_id })!
 }
 
 @[params]
@@ -76,14 +88,14 @@ fn (mut tab Tab) close_target() {
 		eprintln('tab is closed')
 		return
 	}
-	mut idx := -1
-	for i, elems in tab.browser.tabs {
-		if elems[0] == tab.target_id {
-			idx = i
-			break
-		}
+	target_id := tab.target_id
+	tab.browser.tab_map.delete(target_id)
+}
+
+fn (mut tab Tab) get_next_id(current_id int) int {
+	mut id := current_id
+	if id == -1 {
+		id = tab.next_id++
 	}
-	if idx != -1 {
-		tab.browser.tabs.delete(idx)
-	}
+	return id
 }
