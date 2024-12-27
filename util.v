@@ -4,11 +4,17 @@ import os
 import net.http
 import time
 import strings
+import x.json2 as json
+import encoding.base64
 
 const def_timeout = 2 * time.second
 
 fn find_executable(name string) string {
 	return os.find_abs_path_of_executable(name) or { '' }
+}
+
+fn struct_to_map[T](d T) !map[string]json.Any {
+	return json.decode[json.Any](json.encode(d))!.as_map()
 }
 
 pub fn find_between(args ...string) string {
@@ -37,4 +43,13 @@ fn get_base_url(opts Config) string {
 	}
 	proto := if opts.secure { 'https' } else { 'http' }
 	return '${proto}://${opts.host}:${opts.port}'
+}
+
+fn save_data(path string, data string) ! {
+	buf := base64.decode(data)
+	mut f := os.create(path)!
+	defer {
+		f.close()
+	}
+	f.write(buf)!
 }

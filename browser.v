@@ -15,12 +15,7 @@ pub enum BrowserType {
 	edge
 }
 
-pub struct TabMap {
-pub mut:
-	next_id    int
-	session_id string
-	deps       []string
-}
+pub type Strings = string | []string
 
 @[heap]
 pub struct Browser {
@@ -36,9 +31,10 @@ pub mut:
 	next_id   int               = 1
 	ws        &websocket.Client = unsafe { nil }
 	base_url  string
-	tab_map   map[string]TabMap
 mut:
-	process &os.Process = unsafe { nil }
+	process  &os.Process = unsafe { nil }
+	has_init bool        = true
+	emits    []EmitData
 }
 
 @[params]
@@ -111,13 +107,14 @@ fn create_connection(opts Config) !&Browser {
 			bwr.ch <- msg.payload.bytestr()
 		}
 	}, bwr)
-	ws.on_error(fn (mut ws websocket.Client, err string) ! {
+	ws.on_error_ref(fn (mut ws websocket.Client, err string, mut bwr Browser) ! {
 		eprintln('ws.on_error error: ${err}')
-	})
+		bwr.close()
+	}, bwr)
 	ws.connect()!
 	spawn ws.listen()
 	wait_for_idle(on_open.ch)!
-	result := bwr.send('Target.getTargets')!.result()
+	result := bwr.send('Target.getTargets')!.result
 	targets := result['targetInfos']!.arr()
 	mut target_id := ''
 	for target in targets {
@@ -268,25 +265,6 @@ pub fn (mut bwr Browser) put_new_tab(url string) !http.Response {
 	return fetch_data('${bwr.base_url}/json/new?${url}', .put)!
 }
 
-pub enum MessageType {
-	command
-	event
-}
-
-pub type EventFunc = fn (res Result, ref voidptr) !
-
-@[params]
-pub struct Message {
-pub:
-	id         int = -1
-	method     string
-	params     ?map[string]json.Any
-	session_id ?string   @[json: 'sessionId']
-	cb         EventFunc = unsafe { nil } @[json: '-']
-	wait       bool      = true      @[json: '-']
-	ref        voidptr   = unsafe { nil }   @[json: '-']
-}
-
 fn (mut bwr Browser) get_next_id(current_id int) int {
 	mut id := current_id
 	if id == -1 {
@@ -295,67 +273,48 @@ fn (mut bwr Browser) get_next_id(current_id int) int {
 	return id
 }
 
-fn (mut bwr Browser) send_method(method string, typ MessageType, message Message) !Result {
-	id := bwr.get_next_id(message.id)
-	msg := Message{
-		...message
+pub fn (mut bwr Browser) send(method string, params MessageParams) !Result {
+	id := bwr.get_next_id(params.id)
+	msg := MessageParams{
+		...params
 		method: method
 		id:     id
 	}
 	data := json.encode(msg)
 	bwr.ws.write_string(data)!
-	if !msg.wait {
-		th := spawn bwr.recv_method(typ, msg)
-		return Result{
-			method: method
-			state:  .pending
-			th:     th
-			id:     id
-		}
-	}
-	return bwr.recv_method(typ, msg)!
+	return bwr.recv_method(msg)!
 }
 
-pub fn (mut bwr Browser) send(method string, msg Message) !Result {
-	if method !in map_method {
-		return error('unknown method')
-	}
-	return bwr.send_method(method, map_method[method], msg)
+pub fn (mut bwr Browser) send_event(method string, params MessageParams) !Result {
+	return bwr.send(method, MessageParams{ ...params, typ: .event })!
 }
 
-pub fn (mut bwr Browser) on(method string, msg Message) !Result {
-	if method !in map_method {
-		return error('unknown method')
-	}
-	return bwr.send_method(method, .event, msg)
-}
-
-pub fn (mut bwr Browser) recv_method(typ MessageType, msg Message) !Result {
-	mut data, id, method := map[string]json.Any{}, msg.id, msg.method
-	mut is_ok, session_id := false, msg.session_id or { '' }
+fn (mut bwr Browser) recv_method(params MessageParams) !Result {
+	mut data, id, method := map[string]json.Any{}, params.id, params.method
+	session_id, typ := params.session_id or { '' }, params.typ
 	for {
 		select {
 			raw := <-bwr.ch {
 				data = json.decode[json.Any](raw)!.as_map()
-				if !isnil(msg.cb) {
-					res := Result{
-						method: method
-						id:     id
-						data:   data
+				if session_id == data['sessionId'] or { '' }.str() {
+					d_method := data['method'] or { json.Any('') }.str()
+					if d_params := data['params'] {
+						bwr.emit(d_method, Message{
+							method:     d_method
+							params:     d_params.as_map()
+							session_id: session_id
+						})!
 					}
-					msg.cb(res, msg.ref)!
-				}
-				recv_session := data['sessionId'] or { '' }.str()
-				if typ == .command {
-					if data['id'] or { json.Any(-2) }.int() == id && recv_session == session_id {
-						is_ok = true
-						break
-					}
-				} else if typ == .event {
-					if data['method'] or { json.Any('') }.str() == method
-						&& recv_session == session_id {
-						is_ok = true
-						break
+					if typ == .command {
+						if data['id'] or { json.Any(-2) }.int() == id {
+							bwr.off_all()
+							break
+						}
+					} else if typ == .event {
+						if d_method == method {
+							bwr.off_all()
+							break
+						}
 					}
 				}
 			}
@@ -364,55 +323,20 @@ pub fn (mut bwr Browser) recv_method(typ MessageType, msg Message) !Result {
 			}
 		}
 	}
-	if !is_ok {
-		data = map[string]json.Any{}
-	}
 	return Result{
-		method: method
-		id:     id
-		data:   data
+		method:     method
+		id:         id
+		session_id: session_id
+		result:     data['result'] or { json.Any{} }.as_map()
 	}
 }
 
 pub fn (mut bwr Browser) close() {
+	bwr.process.signal_kill()
 	if !isnil(bwr.ws) {
-		bwr.send('Browser.close') or {
-			if !isnil(bwr.process) {
-				bwr.process.signal_kill()
-				return
-			}
-			eprintln('browser is close')
-		}
-		if bwr.ws.get_state() != .closed {
-			bwr.ws.close(1000, 'normal') or { eprintln('browser is closed') }
-		}
-	} else if !isnil(bwr.process) {
-		bwr.process.signal_kill()
+		bwr.ws.close(1000, 'normal') or { eprintln('browser is closed') }
 	}
 	if !bwr.ch.closed {
 		bwr.ch.close()
 	}
-}
-
-pub fn (mut bwr Browser) tab_by_target_id(target_id string) !&Tab {
-	if target_id in bwr.tab_map {
-		res := bwr.get_active_tab(target_id: target_id)!
-		if res.status_code != 200 {
-			return error('error when activate target "${target_id}"')
-		}
-		tab_map := bwr.tab_map[target_id]
-		return &Tab{
-			next_id:    tab_map.next_id
-			deps:       tab_map.deps
-			target_id:  target_id
-			session_id: tab_map.session_id
-			browser:    bwr
-		}
-	}
-	return error('cannot find tab for target_id "${target_id}"')
-}
-
-pub fn (mut bwr Browser) tab_at(idx int) !&Tab {
-	target_id := bwr.tab_map.keys()[idx] or { '' }
-	return bwr.tab_by_target_id(target_id)
 }
