@@ -29,9 +29,10 @@ mut browser := cdv.open_chrome()!
 defer { browser.close() }
 
 mut page := browser.new_page()!
+page.user_agent('my-user-agent')!
 page.navigate('https://vlang.io')!
 
-// code here for listen event fired before page loaded.
+// code here for listen event fired before wait until page load finished.
 page.on('Network.requestWillBeSent', fn (msg cdv.Message, ref voidptr) ! {
 	request := msg.params['request']!
 	println(request.prettify_json_str())
