@@ -204,7 +204,10 @@ pub fn open_browser(opts Config) !&Browser {
 	}
 	for cmd.is_alive() {
 		if !has_ready {
-			bwr = create_connection(cfg)!
+			bwr = create_connection(cfg) or {
+				cmd.signal_kill()
+				panic(err)
+			}
 			has_ready = true
 			break
 		}
@@ -265,6 +268,12 @@ pub fn (mut bwr Browser) put_new_tab(url string) !http.Response {
 	return fetch_data('${bwr.base_url}/json/new?${url}', .put)!
 }
 
+@[noreturn]
+fn (mut bwr Browser) noop(err IError) {
+	bwr.close()
+	panic(err)
+}
+
 fn (mut bwr Browser) get_next_id(current_id int) int {
 	mut id := current_id
 	if id == -1 {
@@ -285,6 +294,14 @@ pub fn (mut bwr Browser) send(method string, params MessageParams) !Result {
 	return bwr.recv_method(msg)!
 }
 
+fn (mut bwr Browser) send_panic(method string, params MessageParams) Result {
+	return bwr.send(method, params) or { bwr.noop(err) }
+}
+
+fn (mut bwr Browser) send_event_panic(method string, params MessageParams) Result {
+	return bwr.send_event(method, params) or { bwr.noop(err) }
+}
+
 pub fn (mut bwr Browser) send_event(method string, params MessageParams) !Result {
 	return bwr.send(method, MessageParams{ ...params, typ: .event })!
 }
@@ -303,7 +320,7 @@ fn (mut bwr Browser) recv_method(params MessageParams) !Result {
 							method:     d_method
 							params:     d_params.as_map()
 							session_id: session_id
-						})!
+						})
 					}
 					if typ == .command {
 						if data['id'] or { json.Any(-2) }.int() == id {
@@ -339,4 +356,22 @@ pub fn (mut bwr Browser) close() {
 	if !bwr.ch.closed {
 		bwr.ch.close()
 	}
+}
+
+fn (mut bwr Browser) struct_to_map[T](d T) map[string]json.Any {
+	return struct_to_map[T](d) or { bwr.noop(err) }
+}
+
+pub struct BrowserVersion {
+pub:
+	protocol_version string @[json: 'protocolVersion']
+	product          string @[json: 'product']
+	revision         string @[json: 'revision']
+	user_agent       string @[json: 'userAgent']
+	v8_version       string @[json: 'jsVersion']
+}
+
+pub fn (mut bwr Browser) version() BrowserVersion {
+	res := bwr.send_panic('Browser.getVersion').result
+	return json.decode[BrowserVersion](res.str()) or { bwr.noop(err) }
 }

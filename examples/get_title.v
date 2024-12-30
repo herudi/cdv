@@ -1,23 +1,16 @@
 import cdv
 
-fn get_title(mut browser cdv.Browser) !string {
-	mut page := browser.new_page()!
-
-	page.navigate('https://example.com/')!
-	page.wait_until()!
-
-	return page.eval('document.title')!.str()
-}
-
 fn main() {
 	mut browser := cdv.open_chrome()!
 
 	defer { browser.close() }
 
-	title := get_title(mut browser) or {
-		browser.close()
-		panic(err)
-	}
+	mut page := browser.new_page()
+
+	page.navigate('https://example.com/')
+	page.wait_until()
+
+	title := page.eval('document.title').str()
 
 	println(title)
 
