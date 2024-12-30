@@ -53,3 +53,17 @@ fn save_data(path string, data string) ! {
 	}
 	f.write(buf)!
 }
+
+fn get_file_url(pathfile string) !string {
+	mut file := pathfile
+	if !os.exists(file) {
+		return error('cannot find pathfile ${file}')
+	}
+	if !os.is_abs_path(file) {
+		file = os.abs_path(file)
+	}
+	if !file.starts_with('file://') {
+		file = 'file://${file}'
+	}
+	return file
+}

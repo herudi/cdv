@@ -47,7 +47,7 @@ pub:
 	stream ?string
 }
 
-pub fn (mut page Page) print_to_pdf(opts PDFParams) !PDF {
+pub fn (mut page Page) print_to_pdf_opt(opts PDFParams) !PDF {
 	size := format_pdf(opts.format)
 	paper_width := opts.paper_width or { size[0] }
 	paper_height := opts.paper_height or { size[1] }
@@ -68,9 +68,13 @@ pub fn (mut page Page) print_to_pdf(opts PDFParams) !PDF {
 	return error('data not found')
 }
 
-pub fn (mut page Page) save_as_pdf(path string, opts PDFParams) ! {
-	pdf := page.print_to_pdf(opts)!
-	pdf.save(path)!
+pub fn (mut page Page) print_to_pdf(opts PDFParams) PDF {
+	return page.print_to_pdf_opt(opts) or { page.noop(err) }
+}
+
+pub fn (mut page Page) save_as_pdf(path string, opts PDFParams) {
+	pdf := page.print_to_pdf(opts)
+	pdf.save(path) or { page.noop(err) }
 }
 
 pub fn (pdf PDF) save(path string) ! {

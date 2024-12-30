@@ -28,9 +28,9 @@ import cdv
 mut browser := cdv.open_chrome()!
 defer { browser.close() }
 
-mut page := browser.new_page()!
-page.user_agent('my-user-agent')!
-page.navigate('https://vlang.io')!
+mut page := browser.new_page()
+page.user_agent('my-user-agent')
+page.navigate('https://vlang.io')
 
 // code here for listen event fired before wait until page load finished.
 page.on('Network.requestWillBeSent', fn (msg cdv.Message, ref voidptr) ! {
@@ -38,12 +38,10 @@ page.on('Network.requestWillBeSent', fn (msg cdv.Message, ref voidptr) ! {
 	println(request.prettify_json_str())
 })
 
-page.wait_until()!
+page.wait_until()
 
 // code here for other method.
-img := page.screenshot(format: 'png')!
-
-img.save('./vlang.png')!
+page.save_as_png('./vlang.png')
 
 ```
 ## Example
@@ -52,57 +50,29 @@ this example automate fb login.
 mut browser := cdv.open_chrome()!
 defer { browser.close() }
 
-mut page := browser.new_page()!
-page.navigate('https://facebook.com')!
-page.wait_until()!
+mut page := browser.new_page()
+page.navigate('https://facebook.com')
+page.wait_until()
 
-mut form := page.selector('form[action="/login"]')!
+// selector_all for form
+mut forms := page.selectors('form')
 
-mut email := form.selector('#email')!
-email.set_value('example@gmail.com')!
-email_str := email.get_value()!
+// find form by action starts_with `/login`
+mut form := forms.find(fn (mut form cdv.Element, i int) !bool {
+	return form.attr('action').starts_with('/login')
+})?
 
-mut passwd := form.selector('#pass')!
-passwd.set_value('myscreetpass')!
+form.input('#email', 'example@gmail.com')
+form.input('#pass', 'my_password')
+form.click('button[type="submit"]')
 
-mut btn := form.selector('button[type="submit"]')!
-btn.click()!
+page.wait_until()
 
-page.wait_until()!
-
-pathname := page.eval('window.location.pathname')!.str()
+pathname := page.eval('window.location.pathname').str()
 if pathname.starts_with('/login') {
-	println('login failed for email "${email_str}"')
+	println('login failed...')
 } else {
 	println('login success...')
-}
-```
-
-## Recipt
-For better error handling and close browser.
-```v
-import cdv
-
-fn get_title(mut browser cdv.Browser) !string {
-	mut page := browser.new_page()!
-
-	page.navigate('https://example.com/')!
-	page.wait_until()!
-
-	return page.eval('document.title')!.str()
-}
-
-fn main() {
-	mut browser := cdv.open_chrome()!
-
-	defer { browser.close() }
-
-	title := get_title(mut browser) or {
-		browser.close()
-		panic(err)
-	}
-
-	println(title)
 }
 ```
 

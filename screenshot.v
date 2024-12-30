@@ -19,7 +19,7 @@ pub:
 	data string
 }
 
-pub fn (mut page Page) screenshot(opts ScreenshotParams) !Screenshot {
+pub fn (mut page Page) screenshot_opt(opts ScreenshotParams) !Screenshot {
 	mut clip := map[string]json.Any{}
 	mut has_clip := false
 	if viewport := opts.clip {
@@ -39,19 +39,23 @@ pub fn (mut page Page) screenshot(opts ScreenshotParams) !Screenshot {
 	return error('data not found')
 }
 
-pub fn (mut page Page) save_as_png(path string, opts ScreenshotParams) ! {
-	data := page.screenshot(ScreenshotParams{ ...opts, format: 'png' })!
-	data.save(path)!
+pub fn (mut page Page) screenshot(opts ScreenshotParams) Screenshot {
+	return page.screenshot_opt(opts) or { page.noop(err) }
 }
 
-pub fn (mut page Page) save_as_jpeg(path string, opts ScreenshotParams) ! {
-	data := page.screenshot(ScreenshotParams{ ...opts, format: 'jpeg' })!
-	data.save(path)!
+pub fn (mut page Page) save_as_png(path string, opts ScreenshotParams) {
+	data := page.screenshot(ScreenshotParams{ ...opts, format: 'png' })
+	data.save(path) or { page.noop(err) }
 }
 
-pub fn (mut page Page) save_as_webp(path string, opts ScreenshotParams) ! {
-	data := page.screenshot(ScreenshotParams{ ...opts, format: 'webp' })!
-	data.save(path)!
+pub fn (mut page Page) save_as_jpeg(path string, opts ScreenshotParams) {
+	data := page.screenshot(ScreenshotParams{ ...opts, format: 'jpeg' })
+	data.save(path) or { page.noop(err) }
+}
+
+pub fn (mut page Page) save_as_webp(path string, opts ScreenshotParams) {
+	data := page.screenshot(ScreenshotParams{ ...opts, format: 'webp' })
+	data.save(path) or { page.noop(err) }
 }
 
 pub fn (sc Screenshot) save(path string) ! {

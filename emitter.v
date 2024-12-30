@@ -41,17 +41,17 @@ pub fn (mut bwr Browser) off_all() {
 	bwr.emits = []EmitData{}
 }
 
-pub fn (mut bwr Browser) emit(method string, msg Message) ! {
+pub fn (mut bwr Browser) emit(method string, msg Message) {
 	for emit in bwr.emits {
 		if emit.method == method || emit.method == '*' {
-			emit.cb(msg, emit.ref)!
+			emit.cb(msg, emit.ref) or { bwr.noop(err) }
 		}
 	}
 }
 
 // for page
-pub fn (mut page Page) emit(method string, msg Message) ! {
-	page.browser.emit(method, msg)!
+pub fn (mut page Page) emit(method string, msg Message) {
+	page.browser.emit(method, msg)
 }
 
 pub fn (mut page Page) on(method Strings, cb EventFunc, params ParamRef) {

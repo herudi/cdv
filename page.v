@@ -1,7 +1,6 @@
 module cdv
 
 import x.json2 as json
-import os
 import net.urllib
 
 @[heap]
@@ -24,17 +23,18 @@ pub:
 	scale  ?f64
 }
 
-pub fn (mut bwr Browser) new_page() !&Page {
+pub fn (mut bwr Browser) new_page_opt(data MessageParams) !&Page {
 	mut target_id := ''
-	if bwr.has_init {
+	if bwr.has_init && data.params == none {
 		target_id = bwr.target_id
 		bwr.has_init = false
 	} else {
-		new_target := bwr.send('Target.createTarget',
-			params: {
-				'url': 'about:blank'
-			}
-		)!.result
+		mut params := data.params or {
+			map[string]json.Any{}
+		}
+			.clone()
+		params['url'] = 'about:blank'
+		new_target := bwr.send('Target.createTarget', params: params)!.result
 		target_id = new_target['targetId']!.str()
 	}
 	attach := bwr.send('Target.attachToTarget',
@@ -49,8 +49,12 @@ pub fn (mut bwr Browser) new_page() !&Page {
 		browser:    bwr
 		session_id: session_id
 	}
-	page.enable(['Page', 'DOM', 'IO', 'Network', 'Runtime'])!
+	page.enable(['Page', 'DOM', 'IO', 'Network', 'Runtime'])
 	return page
+}
+
+pub fn (mut bwr Browser) new_page(data MessageParams) &Page {
+	return bwr.new_page_opt(data) or { bwr.noop(err) }
 }
 
 pub fn (mut page Page) send(method string, params MessageParams) !Result {
@@ -58,8 +62,20 @@ pub fn (mut page Page) send(method string, params MessageParams) !Result {
 	return page.browser.send(method, MessageParams{ ...params, id: id, session_id: page.session_id })!
 }
 
+fn (mut page Page) send_panic(method string, params MessageParams) Result {
+	return page.send(method, params) or { page.noop(err) }
+}
+
+fn (mut page Page) struct_to_map[T](d T) map[string]json.Any {
+	return page.browser.struct_to_map(d)
+}
+
 pub fn (mut page Page) send_event(method string, msg MessageParams) !Result {
 	return page.send(method, MessageParams{ ...msg, typ: .event })!
+}
+
+fn (mut page Page) send_event_panic(method string, msg MessageParams) Result {
+	return page.send_event(method, msg) or { page.noop(err) }
 }
 
 @[params]
@@ -99,24 +115,24 @@ fn (mut page Page) get_next_id(current_id int) int {
 	return id
 }
 
-pub fn (mut page Page) enable(domain Strings, msg MessageParams) ! {
+pub fn (mut page Page) enable(domain Strings, msg MessageParams) {
 	if domain.type_name() == 'string' {
 		domain_str := domain as string
 		if !page.deps.contains(domain_str) {
-			page.send('${domain_str}.enable', msg)!
+			page.send_panic('${domain_str}.enable', msg)
 			page.deps << domain_str
 		}
 		return
 	}
 	for m in domain as []string {
-		page.enable(m)!
+		page.enable(m)
 	}
 }
 
-pub fn (mut page Page) disable(domain Strings, msg MessageParams) ! {
+pub fn (mut page Page) disable(domain Strings, msg MessageParams) {
 	if domain.type_name() == 'string' {
 		domain_str := domain as string
-		page.send('${domain_str}.disable', msg)!
+		page.send_panic('${domain_str}.disable', msg)
 		idx := page.deps.index(domain_str)
 		if page.deps.contains(domain_str) && idx != -1 {
 			page.deps.delete(idx)
@@ -124,7 +140,7 @@ pub fn (mut page Page) disable(domain Strings, msg MessageParams) ! {
 		return
 	}
 	for m in domain as []string {
-		page.disable(m)!
+		page.disable(m)
 	}
 }
 
@@ -138,35 +154,42 @@ pub:
 	referrer_policy ?string @[json: 'referrerPolicy']
 }
 
-pub fn (mut page Page) navigate(url string, opts PageNavigateParams) !Result {
+pub fn (mut page Page) navigate_opt(url string, opts PageNavigateParams) !Result {
 	params := struct_to_map(PageNavigateParams{ ...opts, url: url })!
 	return page.send('Page.navigate', params: params)!
 }
 
-pub fn (mut page Page) from_file(pathfile string, opts PageNavigateParams) !Result {
-	mut file := pathfile
-	if !os.exists(file) {
-		return error('cannot find pathfile ${file}')
-	}
-	if !os.is_abs_path(file) {
-		file = os.abs_path(file)
-	}
-	if !file.starts_with('file://') {
-		file = 'file://${file}'
-	}
-	return page.navigate(file, opts)!
+@[noreturn]
+fn (mut page Page) noop(err IError) {
+	page.browser.noop(err)
 }
 
-pub fn (mut page Page) from_html(html_str string, opts PageNavigateParams) !Result {
-	return page.navigate('data:text/html,${urllib.path_escape(html_str)}', opts)!
+pub fn (mut page Page) navigate(url string, opts PageNavigateParams) Result {
+	return page.navigate_opt(url, opts) or { page.noop(err) }
 }
 
-pub fn (mut page Page) wait_until(params MessageParams) !Result {
+pub fn (mut page Page) from_file(pathfile string, opts PageNavigateParams) Result {
+	mut file := get_file_url(pathfile) or { page.noop(err) }
+	return page.navigate(file, opts)
+}
+
+pub fn (mut page Page) from_html(html_str string, opts PageNavigateParams) Result {
+	return page.navigate('data:text/html,${urllib.path_escape(html_str)}', opts)
+}
+
+pub fn (mut page Page) wait_until_opt(params MessageParams) !Result {
 	mut method := params.method
 	if method == '' {
 		method = 'Page.loadEventFired'
 	}
 	return page.send_event(method, params)!
+}
+
+pub fn (mut page Page) wait_until(params MessageParams) Result {
+	return page.wait_until_opt(params) or {
+		page.browser.close()
+		panic(err)
+	}
 }
 
 pub struct RuntimeRemoteObject {
@@ -204,20 +227,24 @@ pub:
 	serialization_options            ?map[string]json.Any @[json: 'serializationOptions']
 }
 
-pub fn (mut page Page) eval_fn(js_fn string, opts RuntimeEvaluateParams) !json.Any {
+pub fn (mut page Page) eval_fn(js_fn string, opts RuntimeEvaluateParams) json.Any {
 	mut await_promise := opts.await_promise or { false }
 	if !await_promise && js_fn.starts_with('async') {
 		await_promise = true
 	}
 	exp := '(${js_fn})()'
-	return page.eval(exp, RuntimeEvaluateParams{ ...opts, await_promise: await_promise })!
+	return page.eval(exp, RuntimeEvaluateParams{ ...opts, await_promise: await_promise })
 }
 
-pub fn (mut page Page) eval(exp string, opts RuntimeEvaluateParams) !json.Any {
-	return page.eval_op(exp, opts)!.value
+pub fn (mut page Page) eval(exp string, opts RuntimeEvaluateParams) json.Any {
+	res := page.eval_opt(exp, opts) or {
+		page.browser.close()
+		panic(err)
+	}
+	return res.value
 }
 
-pub fn (mut page Page) eval_op(exp string, opts RuntimeEvaluateParams) !RuntimeRemoteObject {
+pub fn (mut page Page) eval_opt(exp string, opts RuntimeEvaluateParams) !RuntimeRemoteObject {
 	params := struct_to_map(RuntimeEvaluateParams{
 		...opts
 		expression: exp
