@@ -2,7 +2,7 @@
 
 Headless Browser in V.
 
-> Status: [WIP] Experimental.
+> Status: Experimental.
 
 > This project based on CDP spec https://chromedevtools.github.io/devtools-protocol.
 
@@ -54,14 +54,7 @@ mut page := browser.new_page()
 page.navigate('https://facebook.com')
 page.wait_until()
 
-// selector_all for form
-mut forms := page.selectors('form')
-
-// find form by action starts_with `/login`
-mut form := forms.find(fn (mut form cdv.Element, i int) !bool {
-	return form.attr('action').starts_with('/login')
-})?
-
+mut form := page.selector('form')
 form.input('#email', 'example@gmail.com')
 form.input('#pass', 'my_password')
 form.click('button[type="submit"]')

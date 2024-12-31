@@ -5,11 +5,12 @@ import os
 
 @[heap]
 pub struct Element {
-pub mut:
-	page    &Page = unsafe { nil }
+pub:
 	data    string
-	var_id  int
 	node_id int
+pub mut:
+	page   &Page = unsafe { nil }
+	var_id int
 }
 
 @[params]
@@ -77,9 +78,9 @@ pub fn (mut page Page) selectors(s string, params ElementParams) []Element {
 	return page.selectors_opt(s, params) or { page.noop(err) }
 }
 
-pub type EachCb = fn (mut elem Element, idx int) !
+pub type EachCb = fn (mut elem Element, i int) !
 
-pub type FilterCb = fn (mut elem Element, idx int) !bool
+pub type FindCb = fn (mut elem Element) !bool
 
 pub fn (mut elems []Element) each(cb EachCb) {
 	for i, mut elem in elems {
@@ -87,9 +88,9 @@ pub fn (mut elems []Element) each(cb EachCb) {
 	}
 }
 
-pub fn (mut elems []Element) find(cb FilterCb) ?Element {
-	for i, mut elem in elems {
-		stat := cb(mut elem, i) or { elem.page.noop(err) }
+pub fn (mut elems []Element) find(cb FindCb) ?Element {
+	for mut elem in elems {
+		stat := cb(mut elem) or { elem.page.noop(err) }
 		if stat {
 			return elem
 		}
