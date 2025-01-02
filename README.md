@@ -33,9 +33,8 @@ page.user_agent('my-user-agent')
 page.navigate('https://vlang.io')
 
 // code here for listen event fired before wait until page load finished.
-page.on('Network.requestWillBeSent', fn (msg cdv.Message, ref voidptr) ! {
-	request := msg.params['request']!
-	println(request.prettify_json_str())
+page.on_request(fn (mut req cdv.Request) ! {
+	println(req)
 })
 
 page.wait_until()

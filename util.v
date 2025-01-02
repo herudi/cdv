@@ -13,8 +13,8 @@ fn find_executable(name string) string {
 	return os.find_abs_path_of_executable(name) or { '' }
 }
 
-fn struct_to_map[T](d T) !map[string]json.Any {
-	return json.decode[json.Any](json.encode(d))!.as_map()
+fn struct_to_map[T](d T) !json.Any {
+	return json.decode[json.Any](json.encode(d))!
 }
 
 pub fn find_between(args ...string) string {

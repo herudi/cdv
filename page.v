@@ -14,6 +14,17 @@ pub mut:
 	var_id     int = 1
 }
 
+pub fn (mut page Page) str() string {
+	return 'Page{
+	next_id: ${page.next_id}
+	target_id: ${page.target_id}
+	browser: &Browser{...}
+	session_id: ${page.session_id}
+	deps: ${page.deps}
+	var_id: ${page.var_id}
+}'
+}
+
 pub struct Viewport {
 pub:
 	x      ?f64
@@ -49,7 +60,7 @@ pub fn (mut bwr Browser) new_page_opt(data MessageParams) !&Page {
 		browser:    bwr
 		session_id: session_id
 	}
-	page.enable(['Page', 'DOM', 'IO', 'Network', 'Runtime'])
+	page.enable(['Page', 'DOM', 'Network', 'Runtime'])
 	return page
 }
 
@@ -66,7 +77,7 @@ fn (mut page Page) send_panic(method string, params MessageParams) Result {
 	return page.send(method, params) or { page.noop(err) }
 }
 
-fn (mut page Page) struct_to_map[T](d T) map[string]json.Any {
+fn (mut page Page) struct_to_map[T](d T) json.Any {
 	return page.browser.struct_to_map(d)
 }
 
@@ -155,7 +166,7 @@ pub:
 }
 
 pub fn (mut page Page) navigate_opt(url string, opts PageNavigateParams) !Result {
-	params := struct_to_map(PageNavigateParams{ ...opts, url: url })!
+	params := struct_to_map(PageNavigateParams{ ...opts, url: url })!.as_map()
 	return page.send('Page.navigate', params: params)!
 }
 
@@ -248,7 +259,7 @@ pub fn (mut page Page) eval_opt(exp string, opts RuntimeEvaluateParams) !Runtime
 	params := struct_to_map(RuntimeEvaluateParams{
 		...opts
 		expression: exp
-	})!
+	})!.as_map()
 	result := page.send('Runtime.evaluate', params: params)!.result
 	if js_error := result['exceptionDetails'] {
 		return error(js_error.prettify_json_str())

@@ -309,18 +309,16 @@ pub fn (mut bwr Browser) send_event(method string, params MessageParams) !Result
 fn (mut bwr Browser) recv_method(params MessageParams) !Result {
 	mut data, id, method := map[string]json.Any{}, params.id, params.method
 	session_id, typ := params.session_id or { '' }, params.typ
+	mut t_error := map[string]json.Any{}
+	mut is_error := false
 	for {
 		select {
 			raw := <-bwr.ch {
 				data = json.decode[json.Any](raw)!.as_map()
 				if session_id == data['sessionId'] or { '' }.str() {
-					d_method := data['method'] or { json.Any('') }.str()
-					if d_params := data['params'] {
-						bwr.emit(d_method, Message{
-							method:     d_method
-							params:     d_params.as_map()
-							session_id: session_id
-						})
+					if d_error := data['error'] {
+						t_error = d_error.as_map()
+						is_error = true
 					}
 					if typ == .command {
 						if data['id'] or { json.Any(-2) }.int() == id {
@@ -328,6 +326,16 @@ fn (mut bwr Browser) recv_method(params MessageParams) !Result {
 							break
 						}
 					} else if typ == .event {
+						d_method := data['method'] or { json.Any('') }.str()
+						if d_method != '' {
+							if d_params := data['params'] {
+								bwr.emit(d_method, Message{
+									method:     d_method
+									params:     d_params.as_map()
+									session_id: session_id
+								})
+							}
+						}
 						if d_method == method {
 							bwr.off_all()
 							break
@@ -345,6 +353,8 @@ fn (mut bwr Browser) recv_method(params MessageParams) !Result {
 		id:         id
 		session_id: session_id
 		result:     data['result'] or { json.Any{} }.as_map()
+		error:      t_error
+		is_error:   is_error
 	}
 }
 
@@ -358,7 +368,7 @@ pub fn (mut bwr Browser) close() {
 	}
 }
 
-fn (mut bwr Browser) struct_to_map[T](d T) map[string]json.Any {
+fn (mut bwr Browser) struct_to_map[T](d T) json.Any {
 	return struct_to_map[T](d) or { bwr.noop(err) }
 }
 

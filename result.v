@@ -8,5 +8,7 @@ pub:
 	method     string
 	session_id string
 pub mut:
-	result map[string]json.Any
+	result   map[string]json.Any
+	is_error bool
+	error    map[string]json.Any
 }

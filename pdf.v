@@ -55,7 +55,7 @@ pub fn (mut page Page) print_to_pdf_opt(opts PDFParams) !PDF {
 		...opts
 		paper_width:  paper_width
 		paper_height: paper_height
-	})!
+	})!.as_map()
 	res := page.send('Page.printToPDF', params: params)!.result
 	if data := res['data'] {
 		if stream := res['stream'] {
