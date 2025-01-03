@@ -33,6 +33,7 @@ pub:
 	is_same_site       ?bool     @[json: 'isSameSite']
 pub mut:
 	info          &RequestInfo = unsafe { nil } @[json: '-']
+	page          &Page        = unsafe { nil }        @[json: '-']
 	has_post_data bool         @[json: '-']
 }
 
@@ -44,7 +45,8 @@ struct DataRequest {
 	cb     EventRequest    = unsafe { nil }
 	cb_ref EventRequestRef = unsafe { nil }
 mut:
-	ref voidptr
+	ref  voidptr
+	page &Page = unsafe { nil }
 }
 
 fn (mut page Page) build_on_request(cb EventRequest, cb_ref EventRequestRef, ref voidptr) &DataRequest {
@@ -52,6 +54,7 @@ fn (mut page Page) build_on_request(cb EventRequest, cb_ref EventRequestRef, ref
 		cb:     cb
 		cb_ref: cb_ref
 		ref:    ref
+		page:   page
 	}
 	page.on('Network.requestWillBeSent', fn (msg Message, mut data DataRequest) ! {
 		params := msg.params.clone()
@@ -59,6 +62,7 @@ fn (mut page Page) build_on_request(cb EventRequest, cb_ref EventRequestRef, ref
 		mut req := json.decode[Request](params['request']!.json_str())!
 		req.has_post_data = req.has_post_data_ or { false }
 		req.info = &info
+		req.page = data.page
 		if !isnil(data.cb) {
 			data.cb(mut req)!
 		} else {
@@ -76,11 +80,29 @@ pub fn (mut page Page) on_request_ref(cb EventRequestRef, ref voidptr) &DataRequ
 	return page.build_on_request(unsafe { nil }, cb, ref)
 }
 
-pub fn (mut page Page) get_request_post_data(request_id string) json.Any {
-	post_data := page.send_panic('Network.getRequestPostData',
+pub fn (mut req Request) post_data() json.Any {
+	req_id := req.info.request_id
+	post_data := req.page.send_panic('Network.getRequestPostData',
 		params: {
-			'requestId': request_id
+			'requestId': req_id
 		}
 	).result['postData'] or { json.Any{} }
 	return post_data
+}
+
+pub fn (mut req Request) redirect_response() ?Response {
+	mut info := req.info
+	if resp := info.redirect_response {
+		mut res := json.decode[Response](resp.json_str()) or { req.page.noop(err) }
+		res.info = &ResponseInfo{
+			request_id: info.request_id
+			loader_id:  info.loader_id
+			timestamp:  info.timestamp
+			typ:        info.typ
+			frame_id:   info.frame_id
+		}
+		res.page = req.page
+		return res
+	}
+	return none
 }

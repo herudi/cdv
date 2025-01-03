@@ -17,6 +17,8 @@ pub:
 	params     ?map[string]json.Any
 	session_id ?string     @[json: 'sessionId']
 	typ        MessageType = .command @[json: '-']
+	cb         EventFunc   = unsafe { nil }   @[json: '-']
+	ref        voidptr     @[json: '-']
 }
 
 pub struct Message {

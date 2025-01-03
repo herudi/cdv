@@ -42,6 +42,7 @@ pub:
 	security_state                 string    @[json: 'securityState']
 pub mut:
 	info &ResponseInfo = unsafe { nil } @[json: '-']
+	page &Page         = unsafe { nil }         @[json: '-']
 }
 
 pub type EventResponse = fn (mut res Response) !
@@ -52,7 +53,8 @@ struct DataResponse {
 	cb     EventResponse    = unsafe { nil }
 	cb_ref EventResponseRef = unsafe { nil }
 mut:
-	ref voidptr
+	ref  voidptr
+	page &Page = unsafe { nil } @[json: '-']
 }
 
 fn (mut page Page) build_on_response(cb EventResponse, cb_ref EventResponseRef, ref voidptr) &DataResponse {
@@ -60,12 +62,14 @@ fn (mut page Page) build_on_response(cb EventResponse, cb_ref EventResponseRef, 
 		cb:     cb
 		cb_ref: cb_ref
 		ref:    ref
+		page:   page
 	}
 	page.on('Network.responseReceived', fn (msg Message, mut data DataResponse) ! {
 		params := msg.params.clone()
 		mut info := json.decode[ResponseInfo](params.str())!
 		mut res := json.decode[Response](params['response']!.json_str())!
 		res.info = &info
+		res.page = data.page
 		if !isnil(data.cb) {
 			data.cb(mut res)!
 		} else {
@@ -83,10 +87,11 @@ pub fn (mut page Page) on_response_ref(cb EventResponseRef, ref voidptr) &DataRe
 	return page.build_on_response(unsafe { nil }, cb, ref)
 }
 
-pub fn (mut page Page) get_response_body(request_id string) json.Any {
-	res_body := page.send_panic('Network.getResponseBody',
+pub fn (mut res Response) body() json.Any {
+	req_id := res.info.request_id
+	res_body := res.page.send_panic('Network.getResponseBody',
 		params: {
-			'requestId': request_id
+			'requestId': req_id
 		}
 	).result
 	if body := res_body['body'] {

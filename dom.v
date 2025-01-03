@@ -20,7 +20,7 @@ pub:
 	data    ?string
 }
 
-pub fn (mut page Page) document_opt() !Element {
+pub fn (mut page Page) get_document_opt() !Element {
 	node_id := page.send('DOM.getDocument')!.result['root']!.as_map()['nodeId']!.int()
 	return Element{
 		node_id: node_id
@@ -29,12 +29,12 @@ pub fn (mut page Page) document_opt() !Element {
 	}
 }
 
-pub fn (mut page Page) document() Element {
-	return page.document_opt() or { page.noop(err) }
+pub fn (mut page Page) get_document() Element {
+	return page.get_document_opt() or { page.noop(err) }
 }
 
 pub fn (mut page Page) selector_opt(s string, params ElementParams) !Element {
-	root_id := params.node_id or { page.document().node_id }
+	root_id := params.node_id or { page.get_document().node_id }
 	data := params.data or { 'document' }
 	node_id := page.send('DOM.querySelector',
 		params: {
@@ -54,7 +54,7 @@ pub fn (mut page Page) selector(s string, params ElementParams) Element {
 }
 
 pub fn (mut page Page) selectors_opt(s string, params ElementParams) ![]Element {
-	root_id := params.node_id or { page.document().node_id }
+	root_id := params.node_id or { page.get_document().node_id }
 	data := params.data or { 'document' }
 	node_ids := page.send('DOM.querySelectorAll',
 		params: {

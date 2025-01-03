@@ -27,14 +27,17 @@ pub:
 	timeout_recv i64
 	ws_url       string
 pub mut:
-	target_id string
-	next_id   int               = 1
-	ws        &websocket.Client = unsafe { nil }
-	base_url  string
+	browser_context_id ?string
+	target_id          string
+	next_id            int               = 1
+	ws                 &websocket.Client = unsafe { nil }
+	base_url           string
+	pages              []Page
 mut:
-	process  &os.Process = unsafe { nil }
-	has_init bool        = true
-	emits    []EmitData
+	process   &os.Process = unsafe { nil }
+	has_init  bool        = true
+	emits     []EmitData
+	use_pages bool
 }
 
 @[params]
@@ -53,6 +56,7 @@ pub:
 	timeout_recv    i64         = 60 * time.second
 	typ             BrowserType = .chrome
 	incognito       bool
+	use_pages       bool
 }
 
 struct OnOpen {
@@ -95,6 +99,7 @@ fn create_connection(opts Config) !&Browser {
 		port:         opts.port
 		timeout_recv: opts.timeout_recv
 		base_url:     base_url
+		use_pages:    opts.use_pages
 	}
 	on_open := &OnOpen{
 		ch: chan int{cap: 1}
@@ -236,38 +241,6 @@ pub fn open_opera(opts Config) !&Browser {
 	return error('not supported')
 }
 
-@[params]
-pub struct ApiOptions {
-pub:
-	target_id string
-}
-
-pub fn (mut bwr Browser) get_version() !http.Response {
-	return fetch_data('${bwr.base_url}/json/version', .get)!
-}
-
-pub fn (mut bwr Browser) get_targets() !http.Response {
-	return fetch_data('${bwr.base_url}/json/list', .get)!
-}
-
-pub fn (mut bwr Browser) get_protocol() !http.Response {
-	return fetch_data('${bwr.base_url}/json/protocol', .get)!
-}
-
-pub fn (mut bwr Browser) get_active_tab(opts ApiOptions) !http.Response {
-	target_id := if opts.target_id == '' { bwr.target_id } else { opts.target_id }
-	return fetch_data('${bwr.base_url}/json/activate/${target_id}', .get)!
-}
-
-pub fn (mut bwr Browser) get_close_tab(opts ApiOptions) !http.Response {
-	target_id := if opts.target_id == '' { bwr.target_id } else { opts.target_id }
-	return fetch_data('${bwr.base_url}/json/close/${target_id}', .get)!
-}
-
-pub fn (mut bwr Browser) put_new_tab(url string) !http.Response {
-	return fetch_data('${bwr.base_url}/json/new?${url}', .put)!
-}
-
 @[noreturn]
 fn (mut bwr Browser) noop(err IError) {
 	bwr.close()
@@ -320,13 +293,21 @@ fn (mut bwr Browser) recv_method(params MessageParams) !Result {
 						t_error = d_error.as_map()
 						is_error = true
 					}
+					d_method := data['method'] or { json.Any('') }.str()
+					if !isnil(params.cb) && d_method != '' {
+						if d_params := data['params'] {
+							params.cb(Message{
+								method:     d_method
+								params:     d_params.as_map()
+								session_id: session_id
+							}, params.ref)!
+						}
+					}
 					if typ == .command {
 						if data['id'] or { json.Any(-2) }.int() == id {
-							bwr.off_all()
 							break
 						}
 					} else if typ == .event {
-						d_method := data['method'] or { json.Any('') }.str()
 						if d_method != '' {
 							if d_params := data['params'] {
 								bwr.emit(d_method, Message{
@@ -337,7 +318,6 @@ fn (mut bwr Browser) recv_method(params MessageParams) !Result {
 							}
 						}
 						if d_method == method {
-							bwr.off_all()
 							break
 						}
 					}
@@ -359,6 +339,14 @@ fn (mut bwr Browser) recv_method(params MessageParams) !Result {
 }
 
 pub fn (mut bwr Browser) close() {
+	if ctx_id := bwr.browser_context_id {
+		bwr.send_panic('Target.disposeBrowserContext',
+			params: {
+				'browserContextId': ctx_id
+			}
+		)
+		return
+	}
 	bwr.process.signal_kill()
 	if !isnil(bwr.ws) {
 		bwr.ws.close(1000, 'normal') or { eprintln('browser is closed') }
@@ -368,8 +356,12 @@ pub fn (mut bwr Browser) close() {
 	}
 }
 
-fn (mut bwr Browser) struct_to_map[T](d T) json.Any {
-	return struct_to_map[T](d) or { bwr.noop(err) }
+fn (mut bwr Browser) add_page(mut page Page) {
+	bwr.pages << page
+}
+
+fn (mut bwr Browser) struct_to_json_any[T](d T) json.Any {
+	return struct_to_json_any[T](d) or { bwr.noop(err) }
 }
 
 pub struct BrowserVersion {
@@ -381,7 +373,7 @@ pub:
 	v8_version       string @[json: 'jsVersion']
 }
 
-pub fn (mut bwr Browser) version() BrowserVersion {
+pub fn (mut bwr Browser) get_version() BrowserVersion {
 	res := bwr.send_panic('Browser.getVersion').result
 	return json.decode[BrowserVersion](res.str()) or { bwr.noop(err) }
 }

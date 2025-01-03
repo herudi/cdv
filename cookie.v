@@ -20,12 +20,12 @@ pub mut:
 }
 
 pub fn (mut page Page) set_cookie(name string, value string, params Cookie) {
-	cookie := page.struct_to_map(Cookie{ ...params, name: name, value: value }).as_map()
+	cookie := page.struct_to_json_any(Cookie{ ...params, name: name, value: value }).as_map()
 	page.send_panic('Network.setCookie', params: cookie)
 }
 
 pub fn (mut page Page) delete_cookie(name string, params Cookie) {
-	cookie := page.struct_to_map(Cookie{ ...params, name: name }).as_map()
+	cookie := page.struct_to_json_any(Cookie{ ...params, name: name }).as_map()
 	page.send_panic('Network.deleteCookies', params: cookie)
 }
 
@@ -34,7 +34,7 @@ pub fn (mut page Page) clear_browser_cookie() {
 }
 
 pub fn (mut page Page) set_cookies(cookies []Cookie) {
-	my_cookies := page.struct_to_map(cookies)
+	my_cookies := page.struct_to_json_any(cookies)
 	page.send_panic('Network.setCookies',
 		params: {
 			'cookies': my_cookies

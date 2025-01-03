@@ -14,7 +14,7 @@ pub:
 }
 
 pub fn (mut page Page) snapshot_opt(opts SnapshotParams) !Snapshot {
-	params := struct_to_map(opts)!.as_map()
+	params := struct_to_json_any(opts)!.as_map()
 	res := page.send('Page.captureSnapshot', params: params)!.result
 	if data := res['data'] {
 		return Snapshot{

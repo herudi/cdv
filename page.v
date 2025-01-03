@@ -36,7 +36,7 @@ pub:
 
 pub fn (mut bwr Browser) new_page_opt(data MessageParams) !&Page {
 	mut target_id := ''
-	if bwr.has_init && data.params == none {
+	if bwr.has_init && data.params == none && bwr.browser_context_id == none {
 		target_id = bwr.target_id
 		bwr.has_init = false
 	} else {
@@ -45,6 +45,9 @@ pub fn (mut bwr Browser) new_page_opt(data MessageParams) !&Page {
 		}
 			.clone()
 		params['url'] = 'about:blank'
+		if ctx_id := bwr.browser_context_id {
+			params['browserContextId'] = ctx_id
+		}
 		new_target := bwr.send('Target.createTarget', params: params)!.result
 		target_id = new_target['targetId']!.str()
 	}
@@ -61,6 +64,9 @@ pub fn (mut bwr Browser) new_page_opt(data MessageParams) !&Page {
 		session_id: session_id
 	}
 	page.enable(['Page', 'DOM', 'Network', 'Runtime'])
+	if bwr.use_pages {
+		bwr.add_page(mut page)
+	}
 	return page
 }
 
@@ -77,8 +83,8 @@ fn (mut page Page) send_panic(method string, params MessageParams) Result {
 	return page.send(method, params) or { page.noop(err) }
 }
 
-fn (mut page Page) struct_to_map[T](d T) json.Any {
-	return page.browser.struct_to_map(d)
+fn (mut page Page) struct_to_json_any[T](d T) json.Any {
+	return page.browser.struct_to_json_any(d)
 }
 
 pub fn (mut page Page) send_event(method string, msg MessageParams) !Result {
@@ -158,15 +164,17 @@ pub fn (mut page Page) disable(domain Strings, msg MessageParams) {
 @[params]
 pub struct PageNavigateParams {
 pub:
-	url             string  @[json: 'url']
-	referrer        ?string @[json: 'referrer']
-	transition_type ?string @[json: 'transitionType']
-	frame_id        ?string @[json: 'frameId']
-	referrer_policy ?string @[json: 'referrerPolicy']
+	url             string    @[json: 'url']
+	referrer        ?string   @[json: 'referrer']
+	transition_type ?string   @[json: 'transitionType']
+	frame_id        ?string   @[json: 'frameId']
+	referrer_policy ?string   @[json: 'referrerPolicy']
+	cb              EventFunc = unsafe { nil } @[json: '-']
+	ref             voidptr   @[json: '-']
 }
 
 pub fn (mut page Page) navigate_opt(url string, opts PageNavigateParams) !Result {
-	params := struct_to_map(PageNavigateParams{ ...opts, url: url })!.as_map()
+	params := struct_to_json_any(PageNavigateParams{ ...opts, url: url })!.as_map()
 	return page.send('Page.navigate', params: params)!
 }
 
@@ -188,19 +196,17 @@ pub fn (mut page Page) from_html(html_str string, opts PageNavigateParams) Resul
 	return page.navigate('data:text/html,${urllib.path_escape(html_str)}', opts)
 }
 
-pub fn (mut page Page) wait_until_opt(params MessageParams) !Result {
+pub fn (mut page Page) wait_until_opt(params MessageParams) ! {
 	mut method := params.method
 	if method == '' {
 		method = 'Page.loadEventFired'
 	}
-	return page.send_event(method, params)!
+	page.send_event(method, params)!
+	page.off_all()
 }
 
-pub fn (mut page Page) wait_until(params MessageParams) Result {
-	return page.wait_until_opt(params) or {
-		page.browser.close()
-		panic(err)
-	}
+pub fn (mut page Page) wait_until(params MessageParams) {
+	page.wait_until_opt(params) or { page.noop(err) }
 }
 
 pub struct RuntimeRemoteObject {
@@ -256,7 +262,7 @@ pub fn (mut page Page) eval(exp string, opts RuntimeEvaluateParams) json.Any {
 }
 
 pub fn (mut page Page) eval_opt(exp string, opts RuntimeEvaluateParams) !RuntimeRemoteObject {
-	params := struct_to_map(RuntimeEvaluateParams{
+	params := struct_to_json_any(RuntimeEvaluateParams{
 		...opts
 		expression: exp
 	})!.as_map()

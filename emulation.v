@@ -81,7 +81,7 @@ pub:
 }
 
 pub fn (mut page Page) geolocation(params GeolocationParams) {
-	obj := page.struct_to_map(params).as_map()
+	obj := page.struct_to_json_any(params).as_map()
 	page.send_panic('Emulation.setEmulatedMedia', params: obj)
 }
 

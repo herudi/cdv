@@ -51,7 +51,7 @@ pub fn (mut page Page) print_to_pdf_opt(opts PDFParams) !PDF {
 	size := format_pdf(opts.format)
 	paper_width := opts.paper_width or { size[0] }
 	paper_height := opts.paper_height or { size[1] }
-	params := struct_to_map(PDFParams{
+	params := struct_to_json_any(PDFParams{
 		...opts
 		paper_width:  paper_width
 		paper_height: paper_height

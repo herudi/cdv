@@ -13,7 +13,7 @@ fn find_executable(name string) string {
 	return os.find_abs_path_of_executable(name) or { '' }
 }
 
-fn struct_to_map[T](d T) !json.Any {
+fn struct_to_json_any[T](d T) !json.Any {
 	return json.decode[json.Any](json.encode(d))!
 }
 
