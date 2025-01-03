@@ -41,10 +41,11 @@ pub type EventRequest = fn (mut req Request) !
 
 pub type EventRequestRef = fn (mut req Request, ref voidptr) !
 
-struct DataRequest {
+pub struct DataRequest {
+pub:
 	cb     EventRequest    = unsafe { nil }
 	cb_ref EventRequestRef = unsafe { nil }
-mut:
+pub mut:
 	ref  voidptr
 	page &Page = unsafe { nil }
 }
@@ -80,7 +81,7 @@ pub fn (mut page Page) on_request_ref(cb EventRequestRef, ref voidptr) &DataRequ
 	return page.build_on_request(unsafe { nil }, cb, ref)
 }
 
-pub fn (mut req Request) post_data() json.Any {
+pub fn (mut req Request) get_post_data() json.Any {
 	req_id := req.info.request_id
 	post_data := req.page.send_panic('Network.getRequestPostData',
 		params: {
