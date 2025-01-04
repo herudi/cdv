@@ -276,7 +276,7 @@ pub:
 
 pub fn (mut el Element) focus(opts WithBackendParams) {
 	params := el.page.struct_to_json_any(WithBackendParams{ ...opts, node_id: el.node_id }).as_map()
-	el.page.send_warn('DOM.getAttributes', params: params)
+	el.page.send_warn('DOM.focus', params: params)
 }
 
 @[params]
