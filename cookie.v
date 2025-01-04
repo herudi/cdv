@@ -21,21 +21,21 @@ pub mut:
 
 pub fn (mut page Page) set_cookie(name string, value string, params Cookie) {
 	cookie := page.struct_to_json_any(Cookie{ ...params, name: name, value: value }).as_map()
-	page.send_panic('Network.setCookie', params: cookie)
+	page.send_or_noop('Network.setCookie', params: cookie)
 }
 
 pub fn (mut page Page) delete_cookie(name string, params Cookie) {
 	cookie := page.struct_to_json_any(Cookie{ ...params, name: name }).as_map()
-	page.send_panic('Network.deleteCookies', params: cookie)
+	page.send_or_noop('Network.deleteCookies', params: cookie)
 }
 
 pub fn (mut page Page) clear_browser_cookie() {
-	page.send_panic('Network.clearBrowserCookies')
+	page.send_or_noop('Network.clearBrowserCookies')
 }
 
 pub fn (mut page Page) set_cookies(cookies []Cookie) {
 	my_cookies := page.struct_to_json_any(cookies)
-	page.send_panic('Network.setCookies',
+	page.send_or_noop('Network.setCookies',
 		params: {
 			'cookies': my_cookies
 		}
@@ -53,7 +53,7 @@ pub fn (mut page Page) get_cookies(opts GetCookiesParams) []Cookie {
 	if urls := opts.urls {
 		obj['urls'] = urls.map(json.Any(it))
 	}
-	arr := page.send_panic('Network.getCookies', params: obj).result['cookies'] or { json.Any{} }.arr()
+	arr := page.send_or_noop('Network.getCookies', params: obj).result['cookies'] or { json.Any{} }.arr()
 	mut cookies := []Cookie{}
 	for cookie in arr {
 		ck_map := cookie.as_map()

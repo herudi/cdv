@@ -13,7 +13,7 @@ pub:
 
 pub fn (mut bwr Browser) create_browser_context_opt(opts BrowserContextParams) !&Browser {
 	params := bwr.struct_to_json_any(opts).as_map()
-	res := bwr.send_panic('Target.createBrowserContext', params: params).result
+	res := bwr.send_or_noop('Target.createBrowserContext', params: params).result
 	if ctx_id := res['browserContextId'] {
 		return &Browser{
 			...bwr
@@ -34,7 +34,7 @@ pub:
 }
 
 pub fn (mut page Page) expose_devtools_protocol(opts ExposeDevToolsProtocolParams) {
-	page.send_panic('Target.exposeDevToolsProtocol',
+	page.send_or_noop('Target.exposeDevToolsProtocol',
 		params: {
 			'targetId':    page.target_id
 			'bindingName': opts.binding
@@ -50,7 +50,7 @@ pub:
 
 pub fn (mut bwr Browser) discover_targets(discover bool, opts DiscoverTargetsParams) {
 	params := bwr.struct_to_json_any(DiscoverTargetsParams{ ...opts, discover: discover }).as_map()
-	bwr.send_panic('Target.setDiscoverTargets', params: params)
+	bwr.send_or_noop('Target.setDiscoverTargets', params: params)
 }
 
 pub struct RemoteLocation {
@@ -61,7 +61,7 @@ pub:
 
 pub fn (mut bwr Browser) remote_locations(locs []RemoteLocation) {
 	locations := bwr.struct_to_json_any(locs)
-	bwr.send_panic('Target.setRemoteLocations',
+	bwr.send_or_noop('Target.setRemoteLocations',
 		params: {
 			'locations': locations
 		}
@@ -83,7 +83,7 @@ pub:
 }
 
 pub fn (mut page Page) get_info() TargetInfo {
-	info := page.send_panic('Target.getTargetInfo',
+	info := page.send_or_noop('Target.getTargetInfo',
 		params: {
 			'targetId': page.target_id
 		}

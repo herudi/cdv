@@ -12,7 +12,7 @@ pub:
 }
 
 pub fn (mut page Page) viewport(params EmulationViewportParams) {
-	page.send_panic('Emulation.setDeviceMetricsOverride',
+	page.send_or_noop('Emulation.setDeviceMetricsOverride',
 		params: {
 			'width':             params.width
 			'height':            params.height
@@ -23,7 +23,7 @@ pub fn (mut page Page) viewport(params EmulationViewportParams) {
 }
 
 pub fn (mut page Page) clear_viewport() {
-	page.send_panic('Emulation.clearDeviceMetricsOverride')
+	page.send_or_noop('Emulation.clearDeviceMetricsOverride')
 }
 
 @[params]
@@ -46,11 +46,11 @@ pub fn (mut page Page) user_agent(name string, params UserAgentParams) {
 	if metadata := params.metadata {
 		obj['userAgentMetadata'] = metadata
 	}
-	page.send_panic('Emulation.setUserAgentOverride', params: obj)
+	page.send_or_noop('Emulation.setUserAgentOverride', params: obj)
 }
 
 pub fn (mut page Page) timezone(timezone_id string) {
-	page.send_panic('Emulation.setTimezoneOverride',
+	page.send_or_noop('Emulation.setTimezoneOverride',
 		params: {
 			'timezoneId': timezone_id
 		}
@@ -69,7 +69,7 @@ pub fn (mut page Page) media(media string, params MediaParams) {
 	if features := params.features {
 		obj['features'] = features
 	}
-	page.send_panic('Emulation.setEmulatedMedia', params: obj)
+	page.send_or_noop('Emulation.setEmulatedMedia', params: obj)
 }
 
 @[params]
@@ -82,9 +82,9 @@ pub:
 
 pub fn (mut page Page) geolocation(params GeolocationParams) {
 	obj := page.struct_to_json_any(params).as_map()
-	page.send_panic('Emulation.setEmulatedMedia', params: obj)
+	page.send_or_noop('Emulation.setEmulatedMedia', params: obj)
 }
 
 pub fn (mut page Page) clear_geolocation() {
-	page.send_panic('Emulation.clearGeolocationOverride')
+	page.send_or_noop('Emulation.clearGeolocationOverride')
 }

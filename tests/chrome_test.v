@@ -22,8 +22,8 @@ fn test_page_dom() {
 	mut bwr := browser
 	mut page := bwr.pages[0]
 	mut div := page.selector('body > div')
-	div.attr('foo', 'bar')
-	is_foobar := div.outer_html().contains('foo="bar"')
+	div.set_attr('foo', 'bar')
+	is_foobar := div.str().contains('foo="bar"')
 	assert is_foobar == true
 }
 
@@ -32,10 +32,16 @@ fn test_page_automate_fb_login() {
 	mut page := bwr.new_page()
 	page.navigate('https://facebook.com')
 	page.wait_until()
+
 	mut form := page.selector('form')
-	form.input('#email', 'example@gmail.com')
-	form.input('#pass', 'my_password')
-	form.click('button[type="submit"]')
+	mut email := form.selector('#email')
+	mut pass := form.selector('#pass')
+	mut submit := form.selector('button[type="submit"]')
+
+	email.set_value('example@gmail.com')
+	pass.set_value('my_password')
+	submit.click()
+
 	page.wait_until()
 	pathname := page.eval('window.location.pathname').str()
 	is_fail := pathname.starts_with('/login')

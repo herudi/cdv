@@ -79,8 +79,17 @@ pub fn (mut page Page) send(method string, params MessageParams) !Result {
 	return page.browser.send(method, MessageParams{ ...params, id: id, session_id: page.session_id })!
 }
 
-fn (mut page Page) send_panic(method string, params MessageParams) Result {
+fn (mut page Page) send_or_noop(method string, params MessageParams) Result {
 	return page.send(method, params) or { page.noop(err) }
+}
+
+fn (mut page Page) send_warn(method string, params MessageParams) Result {
+	res := page.send_or_noop(method, params)
+	if res.is_error {
+		msg := json.Any(res.error).prettify_json_str()
+		eprintln(msg)
+	}
+	return res
 }
 
 fn (mut page Page) struct_to_json_any[T](d T) json.Any {
@@ -91,7 +100,7 @@ pub fn (mut page Page) send_event(method string, msg MessageParams) !Result {
 	return page.send(method, MessageParams{ ...msg, typ: .event })!
 }
 
-fn (mut page Page) send_event_panic(method string, msg MessageParams) Result {
+fn (mut page Page) send_event_or_noop(method string, msg MessageParams) Result {
 	return page.send_event(method, msg) or { page.noop(err) }
 }
 
@@ -136,7 +145,7 @@ pub fn (mut page Page) enable(domain Strings, msg MessageParams) {
 	if domain.type_name() == 'string' {
 		domain_str := domain as string
 		if !page.deps.contains(domain_str) {
-			page.send_panic('${domain_str}.enable', msg)
+			page.send_or_noop('${domain_str}.enable', msg)
 			page.deps << domain_str
 		}
 		return
@@ -149,7 +158,7 @@ pub fn (mut page Page) enable(domain Strings, msg MessageParams) {
 pub fn (mut page Page) disable(domain Strings, msg MessageParams) {
 	if domain.type_name() == 'string' {
 		domain_str := domain as string
-		page.send_panic('${domain_str}.disable', msg)
+		page.send_or_noop('${domain_str}.disable', msg)
 		idx := page.deps.index(domain_str)
 		if page.deps.contains(domain_str) && idx != -1 {
 			page.deps.delete(idx)
@@ -212,15 +221,15 @@ pub fn (mut page Page) wait_until(params MessageParams) {
 pub struct RuntimeRemoteObject {
 pub:
 	typ                   string @[json: 'type']
-	value                 json.Any
-	subtype               string
-	class_name            string              @[json: 'className']
-	unserializable_value  string              @[json: 'unserializableValue']
-	object_id             string              @[json: 'objectId']
-	deep_serialized_value map[string]json.Any @[json: 'deepSerializedValue']
-	custom_preview        map[string]json.Any @[json: 'customPreview']
-	preview               map[string]json.Any
-	description           string
+	value                 ?json.Any
+	subtype               ?string
+	class_name            ?string   @[json: 'className']
+	unserializable_value  ?string   @[json: 'unserializableValue']
+	object_id             ?string   @[json: 'objectId']
+	deep_serialized_value ?json.Any @[json: 'deepSerializedValue']
+	custom_preview        ?json.Any @[json: 'customPreview']
+	preview               ?json.Any
+	description           ?string
 }
 
 @[params]
@@ -254,11 +263,8 @@ pub fn (mut page Page) eval_fn(js_fn string, opts RuntimeEvaluateParams) json.An
 }
 
 pub fn (mut page Page) eval(exp string, opts RuntimeEvaluateParams) json.Any {
-	res := page.eval_opt(exp, opts) or {
-		page.browser.close()
-		panic(err)
-	}
-	return res.value
+	res := page.eval_opt(exp, opts) or { page.noop(err) }
+	return res.value or { json.Any{} }
 }
 
 pub fn (mut page Page) eval_opt(exp string, opts RuntimeEvaluateParams) !RuntimeRemoteObject {
@@ -270,18 +276,8 @@ pub fn (mut page Page) eval_opt(exp string, opts RuntimeEvaluateParams) !Runtime
 	if js_error := result['exceptionDetails'] {
 		return error(js_error.prettify_json_str())
 	}
-	data := result['result'] or { json.Any{} }.as_map()
-	runtime_obj := RuntimeRemoteObject{
-		typ:                   data['type'] or { '' }.str()
-		value:                 data['value'] or { json.Any{} }
-		subtype:               data['subtype'] or { '' }.str()
-		class_name:            data['className'] or { '' }.str()
-		unserializable_value:  data['unserializableValue'] or { '' }.str()
-		object_id:             data['objectId'] or { '' }.str()
-		deep_serialized_value: data['deepSerializedValue'] or { json.Any{} }.as_map()
-		custom_preview:        data['customPreview'] or { json.Any{} }.as_map()
-		preview:               data['preview'] or { json.Any{} }.as_map()
-		description:           data['description'] or { '' }.str()
+	if data := result['result'] {
+		return json.decode[RuntimeRemoteObject](data.str())!
 	}
-	return runtime_obj
+	return error('cannot find result')
 }

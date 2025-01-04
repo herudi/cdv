@@ -5,12 +5,11 @@ import os
 
 @[heap]
 pub struct Element {
-pub:
+pub mut:
 	data    string
 	node_id int
-pub mut:
-	page   &Page = unsafe { nil }
-	var_id int
+	page    &Page = unsafe { nil }
+	var_id  int
 }
 
 @[params]
@@ -21,7 +20,7 @@ pub:
 }
 
 pub fn (mut page Page) get_document_opt() !Element {
-	node_id := page.send('DOM.getDocument')!.result['root']!.as_map()['nodeId']!.int()
+	node_id := page.send_warn('DOM.getDocument').result['root']!.as_map()['nodeId']!.int()
 	return Element{
 		node_id: node_id
 		page:    page
@@ -36,12 +35,12 @@ pub fn (mut page Page) get_document() Element {
 pub fn (mut page Page) selector_opt(s string, params ElementParams) !Element {
 	root_id := params.node_id or { page.get_document().node_id }
 	data := params.data or { 'document' }
-	node_id := page.send('DOM.querySelector',
+	node_id := page.send_warn('DOM.querySelector',
 		params: {
 			'nodeId':   json.Any(root_id)
 			'selector': s
 		}
-	)!.result['nodeId']!.int()
+	).result['nodeId']!.int()
 	return Element{
 		node_id: node_id
 		page:    page
@@ -53,15 +52,15 @@ pub fn (mut page Page) selector(s string, params ElementParams) Element {
 	return page.selector_opt(s, params) or { page.noop(err) }
 }
 
-pub fn (mut page Page) selectors_opt(s string, params ElementParams) ![]Element {
+pub fn (mut page Page) selector_all_opt(s string, params ElementParams) ![]Element {
 	root_id := params.node_id or { page.get_document().node_id }
 	data := params.data or { 'document' }
-	node_ids := page.send('DOM.querySelectorAll',
+	node_ids := page.send_warn('DOM.querySelectorAll',
 		params: {
 			'nodeId':   json.Any(root_id)
 			'selector': s
 		}
-	)!.result['nodeIds']!.arr()
+	).result['nodeIds']!.arr()
 	mut elems := []Element{}
 	for i, id in node_ids {
 		node_id := id.int()
@@ -74,8 +73,8 @@ pub fn (mut page Page) selectors_opt(s string, params ElementParams) ![]Element 
 	return elems
 }
 
-pub fn (mut page Page) selectors(s string, params ElementParams) []Element {
-	return page.selectors_opt(s, params) or { page.noop(err) }
+pub fn (mut page Page) selector_all(s string, params ElementParams) []Element {
+	return page.selector_all_opt(s, params) or { page.noop(err) }
 }
 
 pub type EachCb = fn (mut elem Element, i int) !
@@ -102,16 +101,28 @@ pub fn (mut el Element) selector(s string) Element {
 	return el.page.selector(s, node_id: el.node_id, data: el.data)
 }
 
-pub fn (mut el Element) selectors(s string) []Element {
-	return el.page.selectors(s, node_id: el.node_id, data: el.data)
+pub fn (mut el Element) selector_all(s string) []Element {
+	return el.page.selector_all(s, node_id: el.node_id, data: el.data)
 }
 
-pub fn (mut el Element) files_opt(s string, paths []string) ! {
-	file_id := el.selector(s).node_id
+pub enum NextKeyType {
+	value
+	method
+}
+
+pub fn (mut el Element) get(key string) string {
+	return el.page.eval('${el.data}.${key}').str()
+}
+
+pub fn (mut el Element) write(key string) {
+	el.page.eval('${el.data}.${key}')
+}
+
+pub fn (mut el Element) set_files_opt(paths []string) ! {
 	mut files := []json.Any{}
 	for path in paths {
 		if !os.exists(path) {
-			return error('pathfile not found')
+			return error('${path} not found')
 		}
 		if os.is_abs_path(path) {
 			files << path
@@ -119,86 +130,219 @@ pub fn (mut el Element) files_opt(s string, paths []string) ! {
 			files << os.abs_path(path)
 		}
 	}
-	el.page.send('DOM.setFileInputFiles',
+	el.page.send_warn('DOM.setFileInputFiles',
 		params: {
-			'nodeId': file_id
+			'nodeId': el.node_id
 			'files':  files
 		}
-	)!
+	)
 }
 
-pub fn (mut el Element) files(s string, paths []string) {
-	el.files_opt(s, paths) or { el.page.noop(err) }
+pub fn (mut el Element) set_files(paths []string) {
+	el.set_files_opt(paths) or { el.page.noop(err) }
 }
 
-pub fn (mut el Element) file(s string, path string) {
-	el.files(s, [path])
+pub fn (mut el Element) set_file(path string) {
+	el.set_files([path])
 }
 
-pub fn (mut el Element) get(args ...string) string {
-	val := args.join('')
-	return el.page.eval('${el.data}.${val}').str()
-}
-
-pub fn (mut el Element) set(args ...string) {
-	val := args.join('')
-	el.page.eval('${el.data}.${val}')
-}
-
-pub fn (mut el Element) value_from(name string, args ...string) string {
-	if args.len == 0 {
-		return el.get(name)
+pub fn (mut el Element) get_file() string {
+	remote := el.resolve_node()
+	if object_id := remote.object_id {
+		res := el.page.send_warn('DOM.getFileInfo',
+			params: {
+				'objectId': object_id
+			}
+		).result
+		if path := res['path'] {
+			return path.str()
+		}
 	}
-	val := args.join('')
-	el.set(name, '=', '`${val}`')
 	return ''
 }
 
-pub fn (mut el Element) method_from(name string, args ...json.Any) string {
-	val := args.str()
-	return el.get('${name}(...${val})')
+pub fn (mut el Element) click() {
+	el.page.eval('${el.data}.click()')
 }
 
-pub fn (mut el Element) input(s string, val string) {
-	data := '${el.data}.querySelector(`${s}`)'
-	el.page.eval('${data}.value = `${val}`')
+pub fn (mut el Element) set_outer_html(val string) {
+	el.page.send_warn('DOM.setOuterHTML',
+		params: {
+			'nodeId':    el.node_id
+			'outerHTML': val
+		}
+	)
 }
 
-pub fn (mut el Element) click(s string) {
-	data := '${el.data}.querySelector(`${s}`)'
-	el.page.eval('${data}.click()')
-}
-
-pub fn (mut el Element) outer_html(s ...string) string {
-	return el.value_from('outerHTML', ...s)
-}
-
-pub fn (mut el Element) inner_html(s ...string) string {
-	return el.value_from('innerHTML', ...s)
-}
-
-pub fn (mut el Element) text_content(s ...string) string {
-	return el.value_from('textContent', ...s)
-}
-
-pub fn (mut el Element) value(s ...string) string {
-	return el.value_from('value', ...s)
-}
-
-pub fn (mut el Element) attr(k string, args ...string) string {
-	if args.len == 0 {
-		return el.method_from('getAttribute', json.Any(k))
+pub fn (mut el Element) get_outer_html(opts WithBackendParams) string {
+	params := el.page.struct_to_json_any(WithBackendParams{ ...opts, node_id: el.node_id }).as_map()
+	res := el.page.send_warn('DOM.getOuterHTML', params: params).result
+	if outer := res['outerHTML'] {
+		return outer.str()
 	}
-	mut vals := []json.Any{}
-	vals << json.Any(k)
-	vals << args.map(json.Any(it))
-	return el.method_from('setAttribute', ...vals)
+	return ''
 }
 
-pub fn (mut el Element) remove_attr(k string) {
-	el.method_from('removeAttribute', json.Any(k))
+pub fn (mut el Element) set_inner_html(val string) {
+	el.write('innerHTML=`${val}`')
+}
+
+pub fn (mut el Element) get_inner_html() string {
+	return el.get('innerHTML')
+}
+
+pub fn (mut el Element) set_text_content(val string) {
+	el.write('textContent=`${val}`')
+}
+
+pub fn (mut el Element) get_text_content() string {
+	return el.get('textContent')
+}
+
+pub fn (mut el Element) set_value(val string) {
+	el.write('value=`${val}`')
+}
+
+pub fn (mut el Element) get_value() string {
+	return el.get('value')
+}
+
+pub fn (mut el Element) set_node_value(val string) {
+	el.page.send_warn('DOM.setNodeValue',
+		params: {
+			'nodeId': el.node_id
+			'value':  val
+		}
+	)
+}
+
+pub fn (mut el Element) get_node_value() string {
+	return el.get('nodeValue')
+}
+
+pub fn (mut el Element) set_node_name(val string) {
+	res := el.page.send_warn('DOM.setNodeName',
+		params: {
+			'nodeId': el.node_id
+			'name':   val
+		}
+	).result
+	if node_id := res['nodeId'] {
+		el.node_id = node_id.int()
+	}
+}
+
+pub fn (mut el Element) get_node_name() string {
+	return el.get('nodeName')
+}
+
+pub fn (mut el Element) set_attr(key string, val string) {
+	el.page.send_warn('DOM.setAttributeValue',
+		params: {
+			'nodeId': json.Any(el.node_id)
+			'name':   key
+			'value':  val
+		}
+	)
+}
+
+pub fn (mut el Element) get_attr(key string) string {
+	return el.get('getAttribute(`${key}`)')
+}
+
+pub fn (mut el Element) remove_attr(key string) {
+	el.write('removeAttribute(`${key}`)')
+}
+
+pub fn (mut el Element) get_attrs() []string {
+	res := el.page.send_warn('DOM.getAttributes',
+		params: {
+			'nodeId': el.node_id
+		}
+	).result
+	if attrs := res['attributes'] {
+		return attrs.arr().map(it.str())
+	}
+	return []string{}
+}
+
+@[params]
+pub struct WithBackendParams {
+pub:
+	node_id         ?int    @[json: 'nodeId']
+	backend_node_id ?int    @[json: 'backendNodeId']
+	object_id       ?string @[json: 'objectId']
+}
+
+pub fn (mut el Element) focus(opts WithBackendParams) {
+	params := el.page.struct_to_json_any(WithBackendParams{ ...opts, node_id: el.node_id }).as_map()
+	el.page.send_warn('DOM.getAttributes', params: params)
+}
+
+@[params]
+pub struct MoveToParams {
+pub:
+	insert_before ?Element
+}
+
+pub fn (mut el Element) move_to_opt(target Element, opts MoveToParams) !Element {
+	node_id := el.node_id
+	target_node_id := target.node_id
+	mut params := map[string]json.Any{}
+	params['nodeId'] = node_id
+	params['targetNodeId'] = target_node_id
+	if insert_before := opts.insert_before {
+		params['insertBeforeNodeId'] = insert_before.node_id
+	}
+	res_node_id := el.page.send_warn('DOM.moveTo', params: params).result['nodeId']!.int()
+	return Element{
+		node_id: res_node_id
+		page:    el.page
+		data:    el.data
+	}
+}
+
+pub fn (mut el Element) move_to(target Element, opts MoveToParams) Element {
+	return el.move_to_opt(target, opts) or { el.page.noop(err) }
+}
+
+@[params]
+pub struct NodeInfoParams {
+pub:
+	node_id         ?int    @[json: 'nodeId']
+	backend_node_id ?int    @[json: 'backendNodeId']
+	object_id       ?string @[json: 'objectId']
+	depth           ?int
+	pierce          ?bool
+}
+
+pub fn (mut el Element) get_info(opts NodeInfoParams) map[string]json.Any {
+	params := el.page.struct_to_json_any(NodeInfoParams{ ...opts, node_id: el.node_id }).as_map()
+	res := el.page.send_warn('DOM.describeNode', params: params).result
+	if node := res['node'] {
+		return node.as_map()
+	}
+	return map[string]json.Any{}
+}
+
+@[params]
+pub struct ResolveNodeParams {
+pub:
+	node_id              ?int    @[json: 'nodeId']
+	backend_node_id      ?int    @[json: 'backendNodeId']
+	object_group         ?string @[json: 'objectGroup']
+	execution_context_id ?int    @[json: 'executionContextId']
+}
+
+pub fn (mut el Element) resolve_node(opts ResolveNodeParams) RuntimeRemoteObject {
+	params := el.page.struct_to_json_any(ResolveNodeParams{ ...opts, node_id: el.node_id }).as_map()
+	res := el.page.send_warn('DOM.resolveNode', params: params).result
+	if data := res['object'] {
+		return json.decode[RuntimeRemoteObject](data.str()) or { el.page.noop(err) }
+	}
+	return RuntimeRemoteObject{}
 }
 
 pub fn (mut el Element) str() string {
-	return el.outer_html()
+	return el.get_outer_html()
 }

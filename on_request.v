@@ -83,7 +83,7 @@ pub fn (mut page Page) on_request_ref(cb EventRequestRef, ref voidptr) &DataRequ
 
 pub fn (mut req Request) get_post_data() json.Any {
 	req_id := req.info.request_id
-	post_data := req.page.send_panic('Network.getRequestPostData',
+	post_data := req.page.send_or_noop('Network.getRequestPostData',
 		params: {
 			'requestId': req_id
 		}

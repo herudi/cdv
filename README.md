@@ -49,17 +49,19 @@ this example automate fb login.
 mut browser := cdv.open_chrome()!
 defer { browser.close() }
 
-mut page := browser.new_page()
 page.navigate('https://facebook.com')
 page.wait_until()
 
 mut form := page.selector('form')
-form.input('#email', 'example@gmail.com')
-form.input('#pass', 'my_password')
-form.click('button[type="submit"]')
+mut email := form.selector('#email')
+mut pass := form.selector('#pass')
+mut submit := form.selector('button[type="submit"]')
+
+email.set_value('example@gmail.com')
+pass.set_value('my_password')
+submit.click()
 
 page.wait_until()
-
 pathname := page.eval('window.location.pathname').str()
 if pathname.starts_with('/login') {
 	println('login failed...')

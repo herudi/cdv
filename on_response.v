@@ -90,7 +90,7 @@ pub fn (mut page Page) on_response_ref(cb EventResponseRef, ref voidptr) &DataRe
 
 pub fn (mut res Response) get_body() json.Any {
 	req_id := res.info.request_id
-	res_body := res.page.send_panic('Network.getResponseBody',
+	res_body := res.page.send_or_noop('Network.getResponseBody',
 		params: {
 			'requestId': req_id
 		}

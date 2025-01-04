@@ -267,11 +267,11 @@ pub fn (mut bwr Browser) send(method string, params MessageParams) !Result {
 	return bwr.recv_method(msg)!
 }
 
-fn (mut bwr Browser) send_panic(method string, params MessageParams) Result {
+fn (mut bwr Browser) send_or_noop(method string, params MessageParams) Result {
 	return bwr.send(method, params) or { bwr.noop(err) }
 }
 
-fn (mut bwr Browser) send_event_panic(method string, params MessageParams) Result {
+fn (mut bwr Browser) send_event_or_noop(method string, params MessageParams) Result {
 	return bwr.send_event(method, params) or { bwr.noop(err) }
 }
 
@@ -340,7 +340,7 @@ fn (mut bwr Browser) recv_method(params MessageParams) !Result {
 
 pub fn (mut bwr Browser) close() {
 	if ctx_id := bwr.browser_context_id {
-		bwr.send_panic('Target.disposeBrowserContext',
+		bwr.send_or_noop('Target.disposeBrowserContext',
 			params: {
 				'browserContextId': ctx_id
 			}
@@ -374,6 +374,6 @@ pub:
 }
 
 pub fn (mut bwr Browser) get_version() BrowserVersion {
-	res := bwr.send_panic('Browser.getVersion').result
+	res := bwr.send_or_noop('Browser.getVersion').result
 	return json.decode[BrowserVersion](res.str()) or { bwr.noop(err) }
 }
