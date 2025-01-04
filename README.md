@@ -1,6 +1,6 @@
 # CDV
 
-Headless Browser in V.
+Headless Browser Automation in V.
 
 > Status: Experimental.
 
