@@ -29,15 +29,27 @@ mut browser := cdv.open_chrome()!
 defer { browser.close() }
 
 mut page := browser.new_page()
-page.user_agent('my-user-agent')
+
+// example config
+page.set_viewport(width: 800, height: 400, is_mobile: true)
+page.set_user_agent('my-user-agent')
+
+// navigate/goto url
 page.navigate('https://news.ycombinator.com/')
 
 // code here for listen event fired before wait until page load finished.
 
+// example listen on_request
 page.on_request(fn (mut req cdv.Request) ! {
 	println(req)
 })
 
+// example listen on_response
+page.on_response(fn (mut res cdv.Response) ! {
+	println(res)
+})
+
+// wait until load event fired. default to `Page.loadEventFired`.
 page.wait_until()
 
 // code here for other method.

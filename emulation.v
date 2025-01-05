@@ -11,7 +11,7 @@ pub:
 	is_mobile           bool
 }
 
-pub fn (mut page Page) viewport(params EmulationViewportParams) {
+pub fn (mut page Page) set_viewport(params EmulationViewportParams) {
 	page.send_or_noop('Emulation.setDeviceMetricsOverride',
 		params: {
 			'width':             params.width
@@ -29,16 +29,16 @@ pub fn (mut page Page) clear_viewport() {
 @[params]
 pub struct UserAgentParams {
 pub:
-	lang     ?string
-	platform ?string
-	metadata ?map[string]json.Any
+	accept_language ?string
+	platform        ?string
+	metadata        ?map[string]json.Any
 }
 
-pub fn (mut page Page) user_agent(name string, params UserAgentParams) {
+pub fn (mut page Page) set_user_agent(name string, params UserAgentParams) {
 	mut obj := map[string]json.Any{}
 	obj['userAgent'] = name
-	if lang := params.lang {
-		obj['acceptLanguage'] = lang
+	if accept_language := params.accept_language {
+		obj['acceptLanguage'] = accept_language
 	}
 	if platform := params.platform {
 		obj['platform'] = platform
@@ -49,7 +49,7 @@ pub fn (mut page Page) user_agent(name string, params UserAgentParams) {
 	page.send_or_noop('Emulation.setUserAgentOverride', params: obj)
 }
 
-pub fn (mut page Page) timezone(timezone_id string) {
+pub fn (mut page Page) set_timezone(timezone_id string) {
 	page.send_or_noop('Emulation.setTimezoneOverride',
 		params: {
 			'timezoneId': timezone_id
@@ -63,7 +63,7 @@ pub:
 	features ?[]json.Any
 }
 
-pub fn (mut page Page) media(media string, params MediaParams) {
+pub fn (mut page Page) set_media(media string, params MediaParams) {
 	mut obj := map[string]json.Any{}
 	obj['media'] = media
 	if features := params.features {
@@ -80,7 +80,7 @@ pub:
 	accuracy  ?f64
 }
 
-pub fn (mut page Page) geolocation(params GeolocationParams) {
+pub fn (mut page Page) set_geolocation(params GeolocationParams) {
 	obj := page.struct_to_json_any(params).as_map()
 	page.send_or_noop('Emulation.setEmulatedMedia', params: obj)
 }

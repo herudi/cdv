@@ -48,24 +48,29 @@ pub:
 	filter   ?[]json.Any
 }
 
-pub fn (mut bwr Browser) discover_targets(discover bool, opts DiscoverTargetsParams) {
+pub fn (mut bwr Browser) set_discover_targets(discover bool, opts DiscoverTargetsParams) {
 	params := bwr.struct_to_json_any(DiscoverTargetsParams{ ...opts, discover: discover }).as_map()
 	bwr.send_or_noop('Target.setDiscoverTargets', params: params)
 }
 
+@[params]
 pub struct RemoteLocation {
 pub:
-	host string
-	port int
+	host string @[required]
+	port int    @[required]
 }
 
-pub fn (mut bwr Browser) remote_locations(locs []RemoteLocation) {
+pub fn (mut bwr Browser) set_remote_locations(locs []RemoteLocation) {
 	locations := bwr.struct_to_json_any(locs)
 	bwr.send_or_noop('Target.setRemoteLocations',
 		params: {
 			'locations': locations
 		}
 	)
+}
+
+pub fn (mut bwr Browser) set_remote_location(loc RemoteLocation) {
+	bwr.set_remote_locations([loc])
 }
 
 pub struct TargetInfo {
