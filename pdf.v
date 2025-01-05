@@ -1,5 +1,8 @@
 module cdv
 
+import encoding.base64
+import os
+
 // format pdf in inci
 fn format_pdf(format string) []f64 {
 	return match format {
@@ -39,44 +42,65 @@ pub:
 	generate_tagged_pdf       ?bool   @[json: 'generateTaggedPDF']
 	generate_document_outline ?bool   @[json: 'generateDocumentOutline']
 	format                    string  @[json: '-']
+	path                      ?string @[json: '-']
+	stream                    bool    @[json: '-']
 }
 
 pub struct PDF {
 pub:
 	data   string
-	stream ?string
+	stream string
 }
 
-pub fn (mut page Page) print_to_pdf_opt(opts PDFParams) !PDF {
+pub fn (mut page Page) pdf_opt(opts PDFParams) !PDF {
 	size := format_pdf(opts.format)
 	paper_width := opts.paper_width or { size[0] }
 	paper_height := opts.paper_height or { size[1] }
+	transfer_mode := if opts.stream { 'ReturnAsStream' } else { 'ReturnAsBase64' }
 	params := struct_to_json_any(PDFParams{
 		...opts
-		paper_width:  paper_width
-		paper_height: paper_height
+		paper_width:   paper_width
+		paper_height:  paper_height
+		transfer_mode: transfer_mode
 	})!.as_map()
 	res := page.send('Page.printToPDF', params: params)!.result
 	if data := res['data'] {
+		data_str := data.str()
 		if stream := res['stream'] {
-			return PDF{data.str(), stream.str()}
+			stream_handle := stream
+			if path := opts.path {
+				mut f := os.create(path)!
+				defer { f.close() }
+				for {
+					stream_res := page.send_or_noop('IO.read',
+						params: {
+							'handle': stream_handle
+						}
+					).result
+					buf := base64.decode(stream_res['data']!.str())
+					f.write(buf)!
+					if stream_res['eof']!.bool() {
+						page.send_or_noop('IO.close',
+							params: {
+								'handle': stream_handle
+							}
+						)
+						break
+					}
+				}
+			}
+			return PDF{data_str, stream_handle.str()}
+		}
+		if path := opts.path {
+			save_data(path, data_str)!
 		}
 		return PDF{
-			data: data.str()
+			data: data_str
 		}
 	}
-	return error('data not found')
+	return error('data pdf not found')
 }
 
-pub fn (mut page Page) print_to_pdf(opts PDFParams) PDF {
-	return page.print_to_pdf_opt(opts) or { page.noop(err) }
-}
-
-pub fn (mut page Page) save_as_pdf(path string, opts PDFParams) {
-	pdf := page.print_to_pdf(opts)
-	pdf.save(path) or { page.noop(err) }
-}
-
-pub fn (pdf PDF) save(path string) ! {
-	save_data(path, pdf.data)!
+pub fn (mut page Page) pdf(opts PDFParams) PDF {
+	return page.pdf_opt(opts) or { page.noop(err) }
 }

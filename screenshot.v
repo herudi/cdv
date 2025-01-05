@@ -12,6 +12,7 @@ pub:
 	capture_beyond_viewport ?bool     @[json: 'captureBeyondViewport']
 	optimize_for_speed      ?bool     @[json: 'optimizeForSpeed']
 	clip                    ?Viewport @[json: '-']
+	path                    ?string   @[json: '-']
 }
 
 pub struct Screenshot {
@@ -32,32 +33,17 @@ pub fn (mut page Page) screenshot_opt(opts ScreenshotParams) !Screenshot {
 	})!.as_map()
 	res := page.send('Page.captureScreenshot', params: params)!.result
 	if data := res['data'] {
+		data_str := data.str()
+		if path := opts.path {
+			save_data(path, data_str)!
+		}
 		return Screenshot{
-			data: data.str()
+			data: data_str
 		}
 	}
-	return error('data not found')
+	return error('data screenshot not found')
 }
 
 pub fn (mut page Page) screenshot(opts ScreenshotParams) Screenshot {
 	return page.screenshot_opt(opts) or { page.noop(err) }
-}
-
-pub fn (mut page Page) save_as_png(path string, opts ScreenshotParams) {
-	data := page.screenshot(ScreenshotParams{ ...opts, format: 'png' })
-	data.save(path) or { page.noop(err) }
-}
-
-pub fn (mut page Page) save_as_jpeg(path string, opts ScreenshotParams) {
-	data := page.screenshot(ScreenshotParams{ ...opts, format: 'jpeg' })
-	data.save(path) or { page.noop(err) }
-}
-
-pub fn (mut page Page) save_as_webp(path string, opts ScreenshotParams) {
-	data := page.screenshot(ScreenshotParams{ ...opts, format: 'webp' })
-	data.save(path) or { page.noop(err) }
-}
-
-pub fn (sc Screenshot) save(path string) ! {
-	save_data(path, sc.data)!
 }

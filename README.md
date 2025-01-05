@@ -30,9 +30,10 @@ defer { browser.close() }
 
 mut page := browser.new_page()
 page.user_agent('my-user-agent')
-page.navigate('https://vlang.io')
+page.navigate('https://news.ycombinator.com/')
 
 // code here for listen event fired before wait until page load finished.
+
 page.on_request(fn (mut req cdv.Request) ! {
 	println(req)
 })
@@ -40,7 +41,12 @@ page.on_request(fn (mut req cdv.Request) ! {
 page.wait_until()
 
 // code here for other method.
-page.save_as_png('./vlang.png')
+
+// example generate and save pdf format A4
+page.pdf(format: 'A4', path: './news.pdf')
+
+// example generate and save image format png
+page.screenshot(format: 'png', path: './news.png')
 
 ```
 ## Example
