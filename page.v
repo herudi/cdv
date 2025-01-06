@@ -26,7 +26,7 @@ pub fn (mut page Page) str() string {
 }
 
 pub struct Viewport {
-pub:
+pub mut:
 	x      ?f64
 	y      ?f64
 	width  ?f64

@@ -2,24 +2,24 @@ module cdv
 
 @[params]
 struct Paths {
-	macos   []string
-	windows []string
-	linux   []string
-	other   []string
+	macos_paths []string
+	win_paths   []string
+	linux_paths []string
+	other_paths []string
 }
 
-fn (f Paths) get_paths() []string {
+fn (p Paths) get_paths() []string {
 	$if macos {
-		return f.macos
+		return p.macos_paths
 	} $else $if linux {
-		return f.linux
+		return p.linux_paths
 	} $else $if windows {
-		return f.windows
+		return p.windows_paths
 	}
-	if f.other.len == 0 {
-		return f.linux
+	if p.other_paths.len == 0 {
+		return p.linux_paths
 	}
-	return f.other
+	return p.other_paths
 }
 
 pub fn find_path_os(data Paths) !string {
@@ -39,12 +39,12 @@ pub fn find_path_os(data Paths) !string {
 
 pub fn find_chrome() !string {
 	return find_path_os(
-		macos:   [
+		macos_paths: [
 			'Google Chrome',
 			'Chromium',
 		]
-		windows: ['chrome.exe', 'chromium.exe']
-		linux:   [
+		win_paths:   ['chrome.exe', 'chromium.exe']
+		linux_paths: [
 			'google-chrome',
 			'google-chrome-stable',
 			'chromium-browser',
@@ -55,16 +55,16 @@ pub fn find_chrome() !string {
 
 pub fn find_edge() !string {
 	return find_path_os(
-		macos:   ['Microsoft Edge']
-		windows: ['msedge.exe', 'MicrosoftEdge.exe']
-		linux:   ['microsoft-edge', 'microsoft-edge-stable']
+		macos_paths: ['Microsoft Edge']
+		win_paths:   ['msedge.exe', 'MicrosoftEdge.exe']
+		linux_paths: ['microsoft-edge', 'microsoft-edge-stable']
 	)
 }
 
 pub fn find_firefox() !string {
 	return find_path_os(
-		macos:   ['firefox', 'Firefox']
-		windows: ['firefox.exe']
-		linux:   ['firefox']
+		macos_paths: ['firefox', 'Firefox']
+		win_paths:   ['firefox.exe']
+		linux_paths: ['firefox']
 	)
 }
