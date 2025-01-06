@@ -14,7 +14,7 @@ fn (p Paths) get_paths() []string {
 	} $else $if linux {
 		return p.linux_paths
 	} $else $if windows {
-		return p.windows_paths
+		return p.win_paths
 	}
 	if p.other_paths.len == 0 {
 		return p.linux_paths
