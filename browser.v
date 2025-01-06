@@ -57,6 +57,7 @@ pub:
 	typ             BrowserType = .chrome
 	incognito       bool
 	use_pages       bool
+	maximized       bool
 }
 
 struct OnOpen {
@@ -194,6 +195,9 @@ pub fn open_browser(opts Config) !&Browser {
 	}
 	if opts.incognito {
 		args << '--incognito'
+	}
+	if opts.maximized {
+		args << '--start-maximized'
 	}
 	mut cmd := os.new_process(executable_path)
 	cmd.set_args(args)

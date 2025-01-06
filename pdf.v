@@ -1,9 +1,8 @@
 module cdv
 
-import encoding.base64
 import os
 
-// format pdf in inci
+// format pdf in inchi
 fn format_pdf(format string) []f64 {
 	return match format {
 		'A0' { [33.1102, 46.811] }
@@ -43,7 +42,7 @@ pub:
 	generate_document_outline ?bool   @[json: 'generateDocumentOutline']
 	format                    string  @[json: '-']
 	path                      ?string @[json: '-']
-	stream                    bool    @[json: '-']
+	stream                    bool = true    @[json: '-']
 }
 
 pub struct PDF {
@@ -67,29 +66,13 @@ pub fn (mut page Page) pdf_opt(opts PDFParams) !PDF {
 	if data := res['data'] {
 		data_str := data.str()
 		if stream := res['stream'] {
-			stream_handle := stream
+			handle := stream.str()
 			if path := opts.path {
 				mut f := os.create(path)!
 				defer { f.close() }
-				for {
-					stream_res := page.send_or_noop('IO.read',
-						params: {
-							'handle': stream_handle
-						}
-					).result
-					buf := base64.decode(stream_res['data']!.str())
-					f.write(buf)!
-					if stream_res['eof']!.bool() {
-						page.send_or_noop('IO.close',
-							params: {
-								'handle': stream_handle
-							}
-						)
-						break
-					}
-				}
+				page.handle_stream(handle, writer: f)
 			}
-			return PDF{data_str, stream_handle.str()}
+			return PDF{data_str, handle}
 		}
 		if path := opts.path {
 			save_data(path, data_str)!

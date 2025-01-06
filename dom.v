@@ -97,6 +97,19 @@ pub fn (mut elems []Element) find(cb FindCb) ?Element {
 	return none
 }
 
+pub fn (mut el Element) eval(exp string, opts RuntimeEvaluateParams) json.Any {
+	return el.page.eval(exp, opts)
+}
+
+pub fn (mut el Element) eval_fn(js_fn string, opts RuntimeEvaluateParams) json.Any {
+	mut await_promise := opts.await_promise or { false }
+	if !await_promise && js_fn.starts_with('async') {
+		await_promise = true
+	}
+	exp := '(${js_fn})(${el.data})'
+	return el.eval(exp, RuntimeEvaluateParams{ ...opts, await_promise: await_promise })
+}
+
 pub fn (mut el Element) selector(s string) Element {
 	return el.page.selector(s, node_id: el.node_id, data: el.data)
 }
@@ -111,11 +124,11 @@ pub enum NextKeyType {
 }
 
 pub fn (mut el Element) get(key string) string {
-	return el.page.eval('${el.data}.${key}').str()
+	return el.eval('${el.data}.${key}').str()
 }
 
 pub fn (mut el Element) write(key string) {
-	el.page.eval('${el.data}.${key}')
+	el.eval('${el.data}.${key}')
 }
 
 pub fn (mut el Element) set_files_opt(paths []string) ! {
@@ -162,7 +175,12 @@ pub fn (mut el Element) get_file() string {
 }
 
 pub fn (mut el Element) click() {
-	el.page.eval('${el.data}.click()')
+	el.eval('${el.data}.click()')
+}
+
+pub fn (mut el Element) set_style(key string, val json.Any) {
+	value := json.encode(val)
+	el.write('style.${key}=${value}')
 }
 
 pub fn (mut el Element) set_outer_html(val string) {
@@ -341,6 +359,67 @@ pub fn (mut el Element) resolve_node(opts ResolveNodeParams) RuntimeRemoteObject
 		return json.decode[RuntimeRemoteObject](data.str()) or { el.page.noop(err) }
 	}
 	return RuntimeRemoteObject{}
+}
+
+pub fn (mut el Element) scroll_into_view() {
+	el.eval_fn('(el) => {
+		el.scrollIntoView({
+			block: "center",
+			inline: "center",
+			behavior: "instant",
+		});
+	}')
+}
+
+pub fn (mut el Element) bounding_box() ?Viewport {
+	res := el.eval_fn('(el) => {
+		if (!(el instanceof Element)) {
+			return null;
+		}
+		if (el.getClientRects().length === 0) {
+			return null;
+		}
+		const rect = el.getBoundingClientRect();
+		return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+	}')
+	if res is json.Null {
+		return none
+	}
+	return json.decode[Viewport](res.json_str()) or { el.page.noop(err) }
+}
+
+pub fn (mut el Element) screenshot(opts ScreenshotParams) Screenshot {
+	el.scroll_into_view()
+	mut clip := el.bounding_box() or { Viewport{} }
+	size := el.eval_fn('() => {
+		if (!window.visualViewport) {
+			throw new Error("visualViewport not supported");
+		}
+		return [
+			window.visualViewport.pageLeft,
+			window.visualViewport.pageTop
+		]
+	}').arr().map(it.f64())
+	clip.x = size[0] + (clip.x or { 0.0 })
+	clip.y = size[1] + (clip.y or { 0.0 })
+	if oc := opts.clip {
+		if x := oc.x {
+			clip.x = x + (clip.x or { 0.0 })
+		}
+		if y := oc.y {
+			clip.y = y + (clip.y or { 0.0 })
+		}
+		if height := oc.height {
+			clip.height = height
+		}
+		if width := oc.width {
+			clip.width = width
+		}
+		if scale := oc.scale {
+			clip.scale = scale
+		}
+	}
+	return el.page.screenshot(ScreenshotParams{ ...opts, clip: clip })
 }
 
 pub fn (mut el Element) str() string {

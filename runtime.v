@@ -47,7 +47,9 @@ pub fn (mut page Page) eval_fn(js_fn string, opts RuntimeEvaluateParams) json.An
 }
 
 pub fn (mut page Page) eval(exp string, opts RuntimeEvaluateParams) json.Any {
-	res := page.eval_opt(exp, opts) or { page.noop(err) }
+	res := page.eval_opt(exp, RuntimeEvaluateParams{ ...opts, return_by_value: true }) or {
+		page.noop(err)
+	}
 	return res.value or { json.Any{} }
 }
 

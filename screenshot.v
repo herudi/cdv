@@ -21,16 +21,16 @@ pub:
 }
 
 pub fn (mut page Page) screenshot_opt(opts ScreenshotParams) !Screenshot {
-	mut clip := map[string]json.Any{}
+	mut clip := json.Any{}
 	mut has_clip := false
 	if viewport := opts.clip {
-		clip = struct_to_json_any(viewport)!.as_map()
+		clip = page.struct_to_json_any(viewport)
 		has_clip = true
 	}
-	params := struct_to_json_any(ScreenshotParams{
-		...opts
-		clip_: if has_clip { json.Any(clip) } else { none }
-	})!.as_map()
+	mut params := page.struct_to_json_any(opts).as_map()
+	if has_clip {
+		params['clip_'] = clip
+	}
 	res := page.send('Page.captureScreenshot', params: params)!.result
 	if data := res['data'] {
 		data_str := data.str()
