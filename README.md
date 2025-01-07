@@ -62,7 +62,7 @@ page.screenshot(format: 'png', path: './news.png')
 
 ```
 ## Example
-this example automate fb login.
+#### This example automate fb login using DOM Element.
 ```v
 mut browser := cdv.open_chrome()!
 defer { browser.close() }
@@ -78,6 +78,33 @@ mut submit := form.selector('button[type="submit"]')
 email.set_value('example@gmail.com')
 pass.set_value('my_password')
 submit.click()
+
+page.wait_until()
+pathname := page.eval('window.location.pathname').str()
+if pathname.starts_with('/login') {
+	println('login failed...')
+} else {
+	println('login success...')
+}
+```
+
+#### This example automate fb login using Keyboard.
+```v
+mut browser := cdv.open_chrome()!
+defer { browser.close() }
+
+page.navigate('https://facebook.com')
+page.wait_until()
+
+mut form := page.selector('form')
+mut email := form.selector('#email')
+email.focus()
+
+mut keyboard := page.use_keyboard()
+keyboard.type('example@gmail.com')
+keyboard.press('Tab')
+keyboard.type('my_password')
+keyboard.press('Enter')
 
 page.wait_until()
 pathname := page.eval('window.location.pathname').str()

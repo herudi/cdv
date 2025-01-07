@@ -81,3 +81,12 @@ pub fn (mut page Page) io_close(handle string) {
 		}
 	)
 }
+
+pub fn (mut page Page) resolve_blob(object_id string) string {
+	uuid := page.send_or_noop('IO.resolveBlob',
+		params: {
+			'objectId': object_id
+		}
+	).result['uuid'] or { '' }.str()
+	return uuid
+}
