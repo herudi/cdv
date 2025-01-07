@@ -115,7 +115,7 @@ fn create_connection(opts Config) !&Browser {
 	}, bwr)
 	ws.on_error_ref(fn (mut ws websocket.Client, err string, mut bwr Browser) ! {
 		eprintln('ws.on_error error: ${err}')
-		bwr.close()
+		bwr.close(force: true)
 	}, bwr)
 	ws.connect()!
 	spawn ws.listen()
@@ -247,7 +247,7 @@ pub fn open_opera(opts Config) !&Browser {
 
 @[noreturn]
 fn (mut bwr Browser) noop(err IError) {
-	bwr.close()
+	bwr.close(force: true)
 	panic(err)
 }
 
@@ -342,14 +342,22 @@ fn (mut bwr Browser) recv_method(params MessageParams) !Result {
 	}
 }
 
-pub fn (mut bwr Browser) close() {
+@[params]
+pub struct BrowserCloseParams {
+pub:
+	force bool
+}
+
+pub fn (mut bwr Browser) close(opts BrowserCloseParams) {
 	if ctx_id := bwr.browser_context_id {
 		bwr.send_or_noop('Target.disposeBrowserContext',
 			params: {
 				'browserContextId': ctx_id
 			}
 		)
-		return
+		if !opts.force {
+			return
+		}
 	}
 	bwr.process.signal_kill()
 	if !isnil(bwr.ws) {

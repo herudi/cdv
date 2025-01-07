@@ -53,6 +53,10 @@ pub fn (mut page Page) eval(exp string, opts RuntimeEvaluateParams) json.Any {
 	return res.value or { json.Any{} }
 }
 
+pub fn (mut page Page) eval_all(exp string, opts RuntimeEvaluateParams) RuntimeRemoteObject {
+	return page.eval_opt(exp, opts) or { page.noop(err) }
+}
+
 pub fn (mut page Page) eval_opt(exp string, opts RuntimeEvaluateParams) !RuntimeRemoteObject {
 	params := struct_to_json_any(RuntimeEvaluateParams{
 		...opts

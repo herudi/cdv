@@ -43,6 +43,8 @@ pub:
 	format                    string  @[json: '-']
 	path                      ?string @[json: '-']
 	stream                    bool = true    @[json: '-']
+	stream_offset             ?int    @[json: '-']
+	stream_size               ?int    @[json: '-']
 }
 
 pub struct PDF {
@@ -70,7 +72,11 @@ pub fn (mut page Page) pdf_opt(opts PDFParams) !PDF {
 			if path := opts.path {
 				mut f := os.create(path)!
 				defer { f.close() }
-				page.handle_stream(handle, writer: f)
+				page.handle_stream(handle,
+					writer: f
+					offset: opts.stream_offset
+					size:   opts.stream_size
+				)
 			}
 			return PDF{data_str, handle}
 		}

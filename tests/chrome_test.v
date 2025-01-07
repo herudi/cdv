@@ -35,12 +35,13 @@ fn test_page_automate_fb_login() {
 
 	mut form := page.selector('form')
 	mut email := form.selector('#email')
-	mut pass := form.selector('#pass')
-	mut submit := form.selector('button[type="submit"]')
+	email.focus()
 
-	email.set_value('example@gmail.com')
-	pass.set_value('my_password')
-	submit.click()
+	mut keyboard := page.use_keyboard()
+	keyboard.type('example@gmail.com')
+	keyboard.press('Tab')
+	keyboard.type('my_password')
+	keyboard.press('Enter')
 
 	page.wait_until()
 	pathname := page.eval('window.location.pathname').str()
