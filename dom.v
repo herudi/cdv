@@ -118,11 +118,6 @@ pub fn (mut el Element) selector_all(s string) []Element {
 	return el.page.selector_all(s, node_id: el.node_id, data: el.data)
 }
 
-pub enum NextKeyType {
-	value
-	method
-}
-
 pub fn (mut el Element) get(key string) string {
 	return el.eval('${el.data}.${key}').str()
 }
