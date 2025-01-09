@@ -62,56 +62,12 @@ pub mut:
 	buttons  int
 }
 
-fn (mut state MouseState) assign(args ...MouseState) MouseState {
-	for arg in args {
-		state.position = arg.position
-		state.buttons = arg.buttons
-	}
-	return state
-}
-
 @[heap]
 pub struct Mouse {
 pub mut:
-	state        MouseState
-	keyboard     &Keyboard
-	page         &Page
-	transactions []MouseState
-}
-
-fn (mut ms Mouse) get_state() MouseState {
-	return ms.state.assign(...ms.transactions)
-}
-
-pub struct MouseTransaction {
-pub mut:
-	mouse       &Mouse
-	transaction MouseState
-}
-
-fn (mut trx MouseTransaction) update(mut updated MouseState) {
-	trx.transaction.assign(updated)
-}
-
-fn (mut trx MouseTransaction) commit() {
-	trx.mouse.state.assign(trx.transaction)
-	trx.rollback()
-}
-
-fn (mut trx MouseTransaction) rollback() {
-	idx := trx.mouse.transactions.index(trx.transaction)
-	if idx != -1 {
-		trx.mouse.transactions.delete(idx)
-	}
-}
-
-fn (mut ms Mouse) create_trx() MouseTransaction {
-	mut transaction := MouseState{}
-	ms.transactions << transaction
-	return MouseTransaction{
-		mouse:       ms
-		transaction: transaction
-	}
+	state    MouseState
+	keyboard &Keyboard
+	page     &Page
 }
 
 @[params]
@@ -131,10 +87,7 @@ pub fn (mut ms Mouse) down_opt(opts MouseOptions) ! {
 	if (ms.state.buttons & flag) > 0 {
 		return error('${button} is already pressed')
 	}
-	mut trx := ms.create_trx()
-	trx.update(mut MouseState{
-		buttons: ms.state.buttons | flag
-	})
+	ms.state.buttons = ms.state.buttons | flag
 	mut params := map[string]json.Any{}
 	params['type'] = 'mousePressed'
 	params['modifiers'] = ms.keyboard.modifiers
@@ -144,7 +97,6 @@ pub fn (mut ms Mouse) down_opt(opts MouseOptions) ! {
 	params['x'] = ms.state.position.x
 	params['y'] = ms.state.position.y
 	ms.page.send_or_noop('Input.dispatchMouseEvent', params: params)
-	trx.commit()
 }
 
 pub fn (mut ms Mouse) down(opts MouseOptions) {
@@ -158,13 +110,10 @@ pub fn (mut ms Mouse) up_opt(opts MouseOptions) ! {
 	if flag == 0 {
 		return error('unsupported button')
 	}
-	if (ms.state.buttons & flag) > 0 {
+	if (ms.state.buttons & flag) == 0 {
 		return error('${button} is already pressed')
 	}
-	mut trx := ms.create_trx()
-	trx.update(mut MouseState{
-		buttons: ms.state.buttons & ~flag
-	})
+	ms.state.buttons = ms.state.buttons & ~flag
 	mut params := map[string]json.Any{}
 	params['type'] = 'mouseReleased'
 	params['modifiers'] = ms.keyboard.modifiers
@@ -174,7 +123,6 @@ pub fn (mut ms Mouse) up_opt(opts MouseOptions) ! {
 	params['x'] = ms.state.position.x
 	params['y'] = ms.state.position.y
 	ms.page.send_or_noop('Input.dispatchMouseEvent', params: params)
-	trx.commit()
 }
 
 pub fn (mut ms Mouse) up(opts MouseOptions) {
@@ -203,13 +151,10 @@ pub fn (mut ms Mouse) move_opt(pos_x Pos, pos_y Pos, opts MouseMoveOptions) ! {
 	mut y := pos_y.to_f64()
 	mut to := Point{x, y}
 	for i := 1; i <= steps; i++ {
-		mut trx := ms.create_trx()
-		trx.update(mut MouseState{
-			position: Point{
-				x: from.x + (to.x - from.x) * (i / steps)
-				y: from.y + (to.y - from.y) * (i / steps)
-			}
-		})
+		ms.state.position = Point{
+			x: from.x + (to.x - from.x) * (i / steps)
+			y: from.y + (to.y - from.y) * (i / steps)
+		}
 		mut params := map[string]json.Any{}
 		params['type'] = 'mouseMoved'
 		params['modifiers'] = ms.keyboard.modifiers
@@ -218,7 +163,6 @@ pub fn (mut ms Mouse) move_opt(pos_x Pos, pos_y Pos, opts MouseMoveOptions) ! {
 		params['x'] = ms.state.position.x
 		params['y'] = ms.state.position.y
 		ms.page.send_or_noop('Input.dispatchMouseEvent', params: params)
-		trx.commit()
 	}
 }
 
