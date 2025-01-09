@@ -20,12 +20,12 @@ pub type Strings = string | []string
 @[heap]
 pub struct Browser {
 pub:
-	typ          BrowserType
-	args         []string
-	port         int
-	ch           chan string
-	timeout_recv i64
-	ws_url       string
+	typ     BrowserType
+	args    []string
+	port    int
+	ch      chan string
+	timeout i64
+	ws_url  string
 pub mut:
 	browser_context_id ?string
 	target_id          string
@@ -52,8 +52,7 @@ pub:
 	headless        bool   = true
 	host            string = 'localhost'
 	secure          bool
-	timeout         i64         = 1 * time.second
-	timeout_recv    i64         = 60 * time.second
+	timeout         i64         = 60 * time.second
 	typ             BrowserType = .chrome
 	incognito       bool
 	use_pages       bool
@@ -78,8 +77,9 @@ fn create_connection(opts Config) !&Browser {
 	mut v_res := http.Response{}
 	mut ws_url := opts.ws_url
 	if ws_url == '' {
+		tt := 1 * time.second
 		for {
-			time.sleep(opts.timeout)
+			time.sleep(tt)
 			v_res = get_version_hell(url + '/version')
 			if v_res.status_code == 200 {
 				break
@@ -93,14 +93,14 @@ fn create_connection(opts Config) !&Browser {
 	ch := chan string{}
 	mut ws := websocket.new_client(ws_url, logger: error_logger)!
 	mut bwr := &Browser{
-		ws_url:       ws_url
-		ch:           ch
-		ws:           ws
-		args:         opts.args
-		port:         opts.port
-		timeout_recv: opts.timeout_recv
-		base_url:     base_url
-		use_pages:    opts.use_pages
+		ws_url:    ws_url
+		ch:        ch
+		ws:        ws
+		args:      opts.args
+		port:      opts.port
+		timeout:   opts.timeout
+		base_url:  base_url
+		use_pages: opts.use_pages
 	}
 	on_open := &OnOpen{
 		ch: chan int{cap: 1}
@@ -298,13 +298,17 @@ fn (mut bwr Browser) recv_method(params MessageParams) !Result {
 						is_error = true
 					}
 					d_method := data['method'] or { json.Any('') }.str()
-					if !isnil(params.cb) && d_method != '' {
+					if d_method != '' {
 						if d_params := data['params'] {
-							params.cb(Message{
+							d_msg := Message{
 								method:     d_method
 								params:     d_params.as_map()
 								session_id: session_id
-							}, params.ref)!
+							}
+							if !isnil(params.cb) {
+								params.cb(d_msg, params.ref)!
+							}
+							bwr.emit(d_method, d_msg)
 						}
 					}
 					if typ == .command {
@@ -312,22 +316,13 @@ fn (mut bwr Browser) recv_method(params MessageParams) !Result {
 							break
 						}
 					} else if typ == .event {
-						if d_method != '' {
-							if d_params := data['params'] {
-								bwr.emit(d_method, Message{
-									method:     d_method
-									params:     d_params.as_map()
-									session_id: session_id
-								})
-							}
-						}
 						if d_method == method {
 							break
 						}
 					}
 				}
 			}
-			bwr.timeout_recv {
+			bwr.timeout {
 				return error('connection failed')
 			}
 		}
