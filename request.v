@@ -35,50 +35,48 @@ pub mut:
 	info          &RequestInfo = unsafe { nil } @[json: '-']
 	page          &Page        = unsafe { nil }        @[json: '-']
 	has_post_data bool         @[json: '-']
+	index         int          @[json: '-']
 }
 
-pub type EventRequest = fn (mut req Request) !
+pub type EventRequest = fn (mut req Request) !bool
 
-pub type EventRequestRef = fn (mut req Request, ref voidptr) !
+pub type EventRequestRef = fn (mut req Request, ref voidptr) !bool
 
 pub struct DataRequest {
 pub:
 	cb     EventRequest    = unsafe { nil }
 	cb_ref EventRequestRef = unsafe { nil }
 pub mut:
-	ref  voidptr
-	page &Page = unsafe { nil }
+	ref     voidptr
+	request ?Request
+	index   int
 }
 
-fn (mut page Page) build_on_request(cb EventRequest, cb_ref EventRequestRef, ref voidptr) &DataRequest {
-	mut data := &DataRequest{
-		cb:     cb
-		cb_ref: cb_ref
-		ref:    ref
-		page:   page
-	}
-	page.on('Network.requestWillBeSent', fn (msg Message, mut data DataRequest) ! {
-		params := msg.params.clone()
-		mut info := json.decode[RequestInfo](params.str())!
-		mut req := json.decode[Request](params['request']!.json_str())!
-		req.has_post_data = req.has_post_data_ or { false }
-		req.info = &info
-		req.page = data.page
+fn (mut page Page) build_on_request(mut data DataRequest) {
+	page.on('request', fn (mut msg Message, mut data DataRequest) !bool {
+		mut req := msg.get_request()!
+		req.index = data.index
+		data.index++
 		if !isnil(data.cb) {
-			data.cb(mut req)!
-		} else {
-			data.cb_ref(mut req, data.ref)!
+			return data.cb(mut req)!
 		}
+		return data.cb_ref(mut req, data.ref)!
 	}, ref: data)
-	return data
 }
 
-pub fn (mut page Page) on_request(cb EventRequest) &DataRequest {
-	return page.build_on_request(cb, unsafe { nil }, unsafe { nil })
+pub fn (mut page Page) on_request(cb EventRequest) {
+	mut data := &DataRequest{
+		cb: cb
+	}
+	page.build_on_request(mut data)
 }
 
-pub fn (mut page Page) on_request_ref(cb EventRequestRef, ref voidptr) &DataRequest {
-	return page.build_on_request(unsafe { nil }, cb, ref)
+pub fn (mut page Page) on_request_ref(cb EventRequestRef, ref voidptr) {
+	mut data := &DataRequest{
+		cb_ref: cb
+		ref:    ref
+	}
+	page.build_on_request(mut data)
 }
 
 pub fn (mut req Request) get_post_data() json.Any {
@@ -89,6 +87,14 @@ pub fn (mut req Request) get_post_data() json.Any {
 		}
 	).result['postData'] or { json.Any{} }
 	return post_data
+}
+
+pub fn (req Request) done() bool {
+	return cdv_msg_done
+}
+
+pub fn (req Request) next() bool {
+	return cdv_msg_next
 }
 
 pub fn (mut req Request) redirect_response() ?Response {
@@ -106,4 +112,35 @@ pub fn (mut req Request) redirect_response() ?Response {
 		return res
 	}
 	return none
+}
+
+pub fn (mut page Page) wait_for_request(cb EventRequest) ?Request {
+	mut data := &DataRequest{
+		cb: cb
+	}
+	page.on_request_ref(fn (mut req Request, mut data DataRequest) !bool {
+		is_done := data.cb(mut req)!
+		if is_done {
+			data.request = req
+		}
+		return is_done
+	}, data)
+	page.wait_until()
+	return data.request
+}
+
+pub fn (mut page Page) wait_for_request_ref(cb EventRequestRef, ref voidptr) ?Request {
+	mut data := &DataRequest{
+		cb_ref: cb
+		ref:    ref
+	}
+	page.on_request_ref(fn (mut req Request, mut data DataRequest) !bool {
+		is_done := data.cb_ref(mut req, data.ref)!
+		if is_done {
+			data.request = req
+		}
+		return is_done
+	}, data)
+	page.wait_until()
+	return data.request
 }

@@ -41,51 +41,50 @@ pub:
 	security_details               ?json.Any @[json: 'securityDetails']
 	security_state                 string    @[json: 'securityState']
 pub mut:
-	info &ResponseInfo = unsafe { nil } @[json: '-']
-	page &Page         = unsafe { nil }         @[json: '-']
+	info  &ResponseInfo = unsafe { nil } @[json: '-']
+	page  &Page         = unsafe { nil }         @[json: '-']
+	index int           @[json: '-']
 }
 
-pub type EventResponse = fn (mut res Response) !
+pub type EventResponse = fn (mut res Response) !bool
 
-pub type EventResponseRef = fn (mut res Response, ref voidptr) !
+pub type EventResponseRef = fn (mut res Response, ref voidptr) !bool
 
 pub struct DataResponse {
 pub:
 	cb     EventResponse    = unsafe { nil }
 	cb_ref EventResponseRef = unsafe { nil }
 pub mut:
-	ref  voidptr
-	page &Page = unsafe { nil } @[json: '-']
+	ref      voidptr
+	response ?Response
+	index    int
 }
 
-fn (mut page Page) build_on_response(cb EventResponse, cb_ref EventResponseRef, ref voidptr) &DataResponse {
-	mut data := &DataResponse{
-		cb:     cb
-		cb_ref: cb_ref
-		ref:    ref
-		page:   page
-	}
-	page.on('Network.responseReceived', fn (msg Message, mut data DataResponse) ! {
-		params := msg.params.clone()
-		mut info := json.decode[ResponseInfo](params.str())!
-		mut res := json.decode[Response](params['response']!.json_str())!
-		res.info = &info
-		res.page = data.page
+fn (mut page Page) build_on_response(mut data DataResponse) {
+	page.on('response', fn (mut msg Message, mut data DataResponse) !bool {
+		mut res := msg.get_response()!
+		res.index = data.index
+		data.index++
 		if !isnil(data.cb) {
-			data.cb(mut res)!
-		} else {
-			data.cb_ref(mut res, data.ref)!
+			return data.cb(mut res)!
 		}
+		return data.cb_ref(mut res, data.ref)!
 	}, ref: data)
-	return data
 }
 
-pub fn (mut page Page) on_response(cb EventResponse) &DataResponse {
-	return page.build_on_response(cb, unsafe { nil }, unsafe { nil })
+pub fn (mut page Page) on_response(cb EventResponse) {
+	mut data := &DataResponse{
+		cb: cb
+	}
+	page.build_on_response(mut data)
 }
 
-pub fn (mut page Page) on_response_ref(cb EventResponseRef, ref voidptr) &DataResponse {
-	return page.build_on_response(unsafe { nil }, cb, ref)
+pub fn (mut page Page) on_response_ref(cb EventResponseRef, ref voidptr) {
+	mut data := &DataResponse{
+		cb_ref: cb
+		ref:    ref
+	}
+	page.build_on_response(mut data)
 }
 
 pub fn (mut res Response) get_body() json.Any {
@@ -103,4 +102,43 @@ pub fn (mut res Response) get_body() json.Any {
 		return body
 	}
 	return json.Any{}
+}
+
+pub fn (res Response) done() bool {
+	return cdv_msg_done
+}
+
+pub fn (res Response) next() bool {
+	return cdv_msg_next
+}
+
+pub fn (mut page Page) wait_for_response(cb EventResponse) ?Response {
+	mut data := &DataResponse{
+		cb: cb
+	}
+	page.on_response_ref(fn (mut res Response, mut data DataResponse) !bool {
+		is_done := data.cb(mut res)!
+		if is_done {
+			data.response = res
+		}
+		return is_done
+	}, data)
+	page.wait_until()
+	return data.response
+}
+
+pub fn (mut page Page) wait_for_response_ref(cb EventResponseRef, ref voidptr) ?Response {
+	mut data := &DataResponse{
+		cb_ref: cb
+		ref:    ref
+	}
+	page.on_response_ref(fn (mut res Response, mut data DataResponse) !bool {
+		is_done := data.cb_ref(mut res, data.ref)!
+		if is_done {
+			data.response = res
+		}
+		return is_done
+	}, data)
+	page.wait_until()
+	return data.response
 }

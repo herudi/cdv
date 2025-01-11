@@ -15,7 +15,11 @@ pub:
 
 pub fn (mut bwr Browser) on(method Strings, cb EventFunc, params ParamRef) {
 	if method.type_name() == 'string' {
-		bwr.emits << EmitData{method as string, cb, params.ref}
+		mut mtd := method as string
+		if mtd in map_method {
+			mtd = map_method[mtd]
+		}
+		bwr.emits << EmitData{mtd, cb, params.ref}
 		return
 	}
 	for m in method as []string {
@@ -23,43 +27,37 @@ pub fn (mut bwr Browser) on(method Strings, cb EventFunc, params ParamRef) {
 	}
 }
 
-pub fn (mut bwr Browser) off(method Strings, cb EventFunc, params ParamRef) {
-	if method.type_name() == 'string' {
-		for i, emit in bwr.emits {
-			if emit.method == (method as string) && params.ref == emit.ref {
-				bwr.emits.delete(i)
-			}
-		}
-		return
-	}
-	for m in method as []string {
-		bwr.off(m, cb, params)
-	}
-}
-
 pub fn (mut bwr Browser) off_all() {
 	bwr.emits = []EmitData{}
 }
 
-pub fn (mut bwr Browser) emit(method string, msg Message) {
+pub fn (mut bwr Browser) emit(method string, mut msg Message) bool {
 	for emit in bwr.emits {
 		if emit.method == method || emit.method == '*' {
-			emit.cb(msg, emit.ref) or { bwr.noop(err) }
+			return emit.cb(mut msg, emit.ref) or { bwr.noop(err) }
 		}
 	}
+	return false
 }
 
 // for page
-pub fn (mut page Page) emit(method string, msg Message) {
-	page.browser.emit(method, msg)
+pub fn (mut page Page) emit(method string, mut msg Message) bool {
+	return page.browser.emit(method, mut msg)
+}
+
+struct DataMessagePage {
+	cb  EventFunc = unsafe { nil }
+	ref voidptr
+mut:
+	page &Page = unsafe { nil }
 }
 
 pub fn (mut page Page) on(method Strings, cb EventFunc, params ParamRef) {
-	page.browser.on(method, cb, params)
-}
-
-pub fn (mut page Page) off(method Strings, cb EventFunc, params ParamRef) {
-	page.browser.off(method, cb, params)
+	mut data := &DataMessagePage{cb, params.ref, page}
+	page.browser.on(method, fn (mut msg Message, mut data DataMessagePage) !bool {
+		msg.page = data.page
+		return data.cb(mut msg, data.ref)!
+	}, ref: data)
 }
 
 pub fn (mut page Page) off_all() {

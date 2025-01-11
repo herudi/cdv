@@ -1,7 +1,7 @@
 import cdv
 import time
 
-const browser = cdv.open_chrome(use_pages: true, timeout: 100 * time.second) or { panic(err) }
+const browser = cdv.open_chrome(use_pages: true, read_timeout: 100 * time.second) or { panic(err) }
 
 fn test_browser_version() {
 	mut bwr := browser

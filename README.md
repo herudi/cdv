@@ -40,13 +40,15 @@ page.navigate('https://news.ycombinator.com/')
 // code here for listen event fired before wait until page load finished.
 
 // example listen on_request
-page.on_request(fn (mut req cdv.Request) ! {
+page.on_request(fn (mut req cdv.Request) !bool {
 	println(req)
+	return req.next()
 })
 
 // example listen on_response
-page.on_response(fn (mut res cdv.Response) ! {
+page.on_response(fn (mut res cdv.Response) !bool {
 	println(res)
+	return res.next()
 })
 
 // wait until load event fired. default to `Page.loadEventFired`.

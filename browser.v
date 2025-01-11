@@ -20,12 +20,11 @@ pub type Strings = string | []string
 @[heap]
 pub struct Browser {
 pub:
-	typ     BrowserType
-	args    []string
-	port    int
-	ch      chan string
-	timeout i64
-	ws_url  string
+	typ    BrowserType
+	args   []string
+	port   int
+	ch     chan string
+	ws_url string
 pub mut:
 	browser_context_id ?string
 	target_id          string
@@ -52,11 +51,12 @@ pub:
 	headless        bool   = true
 	host            string = 'localhost'
 	secure          bool
-	timeout         i64         = 60 * time.second
 	typ             BrowserType = .chrome
 	incognito       bool
 	use_pages       bool
 	maximized       bool
+	read_timeout    i64 = 60 * time.second
+	write_timeout   i64 = 60 * time.second
 }
 
 struct OnOpen {
@@ -91,14 +91,17 @@ fn create_connection(opts Config) !&Browser {
 		}
 	}
 	ch := chan string{}
-	mut ws := websocket.new_client(ws_url, logger: error_logger)!
+	mut ws := websocket.new_client(ws_url,
+		logger:        error_logger
+		read_timeout:  opts.read_timeout
+		write_timeout: opts.write_timeout
+	)!
 	mut bwr := &Browser{
 		ws_url:    ws_url
 		ch:        ch
 		ws:        ws
 		args:      opts.args
 		port:      opts.port
-		timeout:   opts.timeout
 		base_url:  base_url
 		use_pages: opts.use_pages
 	}
@@ -288,6 +291,7 @@ fn (mut bwr Browser) recv_method(params MessageParams) !Result {
 	session_id, typ := params.session_id or { '' }, params.typ
 	mut t_error := map[string]json.Any{}
 	mut is_error := false
+	mut is_done := false
 	for {
 		select {
 			raw := <-bwr.ch {
@@ -300,30 +304,30 @@ fn (mut bwr Browser) recv_method(params MessageParams) !Result {
 					d_method := data['method'] or { json.Any('') }.str()
 					if d_method != '' {
 						if d_params := data['params'] {
-							d_msg := Message{
+							mut d_msg := Message{
 								method:     d_method
 								params:     d_params.as_map()
 								session_id: session_id
 							}
 							if !isnil(params.cb) {
-								params.cb(d_msg, params.ref)!
+								is_done = params.cb(mut d_msg, params.ref)!
 							}
-							bwr.emit(d_method, d_msg)
+							is_done = bwr.emit(d_method, mut d_msg)
 						}
 					}
 					if typ == .command {
 						if data['id'] or { json.Any(-2) }.int() == id {
-							break
+							is_done = true
 						}
 					} else if typ == .event {
 						if d_method == method {
-							break
+							is_done = true
 						}
 					}
+					if is_done {
+						break
+					}
 				}
-			}
-			bwr.timeout {
-				return error('connection failed')
 			}
 		}
 	}

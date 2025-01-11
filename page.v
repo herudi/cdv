@@ -187,6 +187,21 @@ pub fn (mut page Page) navigate_opt(url string, opts PageNavigateParams) !Result
 	return page.send('Page.navigate', params: params)!
 }
 
+@[params]
+pub struct PageReloadParams {
+pub:
+	ignore_cache               ?bool     @[json: 'ignoreCache']
+	script_to_evaluate_on_load ?string   @[json: 'scriptToEvaluateOnLoad']
+	loader_id                  ?string   @[json: 'loaderId']
+	cb                         EventFunc = unsafe { nil } @[json: '-']
+	ref                        voidptr   @[json: '-']
+}
+
+pub fn (mut page Page) reload(opts PageReloadParams) Result {
+	params := page.struct_to_json_any(opts).as_map()
+	return page.send_or_noop('Page.reload', params: params)
+}
+
 @[noreturn]
 fn (mut page Page) noop(err IError) {
 	page.browser.noop(err)

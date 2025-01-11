@@ -7,7 +7,7 @@ pub enum MessageType {
 	event
 }
 
-pub type EventFunc = fn (msg Message, ref voidptr) !
+pub type EventFunc = fn (mut msg Message, ref voidptr) !bool
 
 @[params]
 pub struct MessageParams {
@@ -27,8 +27,42 @@ pub:
 	session_id string
 pub mut:
 	params map[string]json.Any
+	page   &Page = unsafe { nil }
 }
 
 pub fn (msg Message) has(m string) bool {
-	return m != '' && m == msg.method
+	return m != '' && (m == msg.method || map_method[m] == msg.method)
+}
+
+pub fn (msg Message) done() bool {
+	return cdv_msg_done
+}
+
+pub fn (msg Message) next() bool {
+	return cdv_msg_next
+}
+
+pub fn (mut msg Message) get_request() !Request {
+	params := msg.params.clone()
+	if request := params['request'] {
+		mut info := json.decode[RequestInfo](params.str())!
+		mut req := json.decode[Request](request.json_str())!
+		req.has_post_data = req.has_post_data_ or { false }
+		req.info = &info
+		req.page = msg.page
+		return req
+	}
+	return error('cannot find "params.request"')
+}
+
+pub fn (mut msg Message) get_response() !Response {
+	params := msg.params.clone()
+	if response := params['response'] {
+		mut info := json.decode[ResponseInfo](params.str())!
+		mut res := json.decode[Response](response.json_str())!
+		res.info = &info
+		res.page = msg.page
+		return res
+	}
+	return error('cannot find "params.response"')
 }
