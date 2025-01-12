@@ -1,6 +1,7 @@
 module cdv
 
 import x.json2 as json
+import os
 
 @[params]
 pub struct DownloadBehaviorParams {
@@ -8,16 +9,30 @@ pub:
 	behavior           string
 	browser_context_id ?string @[json: 'browserContextId']
 	download_path      ?string @[json: 'downloadPath']
-	events_enabled     ?bool   @[json: 'eventsEnabled']
+	event              ?bool   @[json: 'eventsEnabled']
 }
 
-pub fn (mut bwr Browser) set_download_behavior(behavior string, opts DownloadBehaviorParams) {
-	params := bwr.struct_to_json_any(DownloadBehaviorParams{
+pub fn (mut bwr Browser) set_download_behavior_opt(behavior string, opts DownloadBehaviorParams) ! {
+	mut params := bwr.struct_to_json_any(DownloadBehaviorParams{
 		...opts
 		behavior:           behavior
 		browser_context_id: bwr.browser_context_id
 	}).as_map()
+	if dl_path := params['downloadPath'] {
+		mut path := dl_path.str()
+		if !os.exists(path) {
+			return error('${path} does not exists')
+		}
+		if !os.is_abs_path(path) {
+			path = os.abs_path(path)
+			params['downloadPath'] = json.Any(path)
+		}
+	}
 	bwr.send_or_noop('Browser.setDownloadBehavior', params: params)
+}
+
+pub fn (mut bwr Browser) set_download_behavior(behavior string, opts DownloadBehaviorParams) {
+	bwr.set_download_behavior_opt(behavior, opts) or { bwr.noop(err) }
 }
 
 pub fn (mut bwr Browser) cancel_download(guid string) {
@@ -93,4 +108,20 @@ pub fn (_ DownloadProgress) done() bool {
 
 pub fn (_ DownloadProgress) next() bool {
 	return cdv_msg_next
+}
+
+pub fn (mut page Page) set_download_behavior(behavior string, opts DownloadBehaviorParams) {
+	page.browser.set_download_behavior(behavior, opts)
+}
+
+pub fn (mut page Page) cancel_download(guid string) {
+	page.browser.cancel_download(guid)
+}
+
+pub fn (mut page Page) wait_for_download_progress(cb EventDownloadProgress) {
+	page.browser.wait_for_download_progress(cb)
+}
+
+pub fn (mut page Page) wait_for_download_progress_ref(cb EventDownloadProgressRef, ref voidptr) {
+	page.browser.wait_for_download_progress_ref(cb, ref)
 }

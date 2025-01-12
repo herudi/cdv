@@ -76,7 +76,25 @@ pub fn (mut bwr Browser) new_page(data MessageParams) &Page {
 
 pub fn (mut page Page) send(method string, params MessageParams) !Result {
 	id := page.get_next_id(params.id)
-	return page.browser.send(method, MessageParams{ ...params, id: id, session_id: page.session_id })!
+	if !isnil(params.cb) {
+		mut data := &DataMessagePage{params.cb, params.ref, page}
+		cb := fn (mut msg Message, mut data DataMessagePage) !bool {
+			msg.page = data.page
+			return data.cb(mut msg, data.ref)!
+		}
+		return page.browser.send(method, MessageParams{
+			...params
+			ref:        data
+			cb:         cb
+			id:         id
+			session_id: page.session_id
+		})!
+	}
+	return page.browser.send(method, MessageParams{
+		...params
+		id:         id
+		session_id: page.session_id
+	})!
 }
 
 fn (mut page Page) send_or_noop(method string, params MessageParams) Result {
