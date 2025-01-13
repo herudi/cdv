@@ -20,11 +20,12 @@ pub type Strings = string | []string
 @[heap]
 pub struct Browser {
 pub:
-	typ    BrowserType
-	args   []string
-	port   int
-	ch     chan string
-	ws_url string
+	typ     BrowserType
+	args    []string
+	port    int
+	ch      chan string
+	ws_url  string
+	timeout i64
 pub mut:
 	browser_context_id ?string
 	target_id          string
@@ -55,8 +56,8 @@ pub:
 	incognito       bool
 	use_pages       bool
 	maximized       bool
-	read_timeout    i64 = 60 * time.second
-	write_timeout   i64 = 60 * time.second
+	timeout         i64 = ws_timeout
+	write_timeout   i64 = ws_timeout
 }
 
 struct OnOpen {
@@ -93,7 +94,7 @@ fn create_connection(opts Config) !&Browser {
 	ch := chan string{}
 	mut ws := websocket.new_client(ws_url,
 		logger:        error_logger
-		read_timeout:  opts.read_timeout
+		read_timeout:  opts.timeout
 		write_timeout: opts.write_timeout
 	)!
 	mut bwr := &Browser{
@@ -104,6 +105,7 @@ fn create_connection(opts Config) !&Browser {
 		port:      opts.port
 		base_url:  base_url
 		use_pages: opts.use_pages
+		timeout:   opts.timeout
 	}
 	on_open := &OnOpen{
 		ch: chan int{cap: 1}
@@ -292,6 +294,8 @@ fn (mut bwr Browser) recv_method(params MessageParams) !Result {
 	mut t_error := map[string]json.Any{}
 	mut is_error := false
 	mut is_done := false
+	mut release := params.timeout
+	mut timeout := release
 	for {
 		select {
 			raw := <-bwr.ch {
@@ -325,9 +329,13 @@ fn (mut bwr Browser) recv_method(params MessageParams) !Result {
 						}
 					}
 					if is_done {
+						timeout = release
 						break
 					}
 				}
+			}
+			timeout {
+				break
 			}
 		}
 	}

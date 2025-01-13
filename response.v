@@ -112,7 +112,7 @@ pub fn (res Response) next() bool {
 	return cdv_msg_next
 }
 
-pub fn (mut page Page) wait_for_response(cb EventResponse) ?Response {
+pub fn (mut page Page) wait_for_response(cb EventResponse, opts ParamTimeout) ?Response {
 	mut data := &DataResponse{
 		cb: cb
 	}
@@ -123,11 +123,11 @@ pub fn (mut page Page) wait_for_response(cb EventResponse) ?Response {
 		}
 		return is_done
 	}, data)
-	page.wait_until()
+	page.wait_for(opts.timeout)
 	return data.response
 }
 
-pub fn (mut page Page) wait_for_response_ref(cb EventResponseRef, ref voidptr) ?Response {
+pub fn (mut page Page) wait_for_response_ref(cb EventResponseRef, ref voidptr, opts ParamTimeout) ?Response {
 	mut data := &DataResponse{
 		cb_ref: cb
 		ref:    ref
@@ -139,6 +139,6 @@ pub fn (mut page Page) wait_for_response_ref(cb EventResponseRef, ref voidptr) ?
 		}
 		return is_done
 	}, data)
-	page.wait_until()
+	page.wait_for(opts.timeout)
 	return data.response
 }

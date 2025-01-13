@@ -7,6 +7,25 @@ pub enum MessageType {
 	event
 }
 
+@[params]
+pub struct ParamRef {
+pub:
+	ref voidptr
+}
+
+@[params]
+pub struct ParamTimeout {
+pub:
+	timeout i64 = def_timeout
+}
+
+@[params]
+pub struct ParamRefTimeout {
+pub:
+	timeout i64 = def_timeout
+	ref     voidptr
+}
+
 pub type EventFunc = fn (mut msg Message, ref voidptr) !bool
 
 @[params]
@@ -19,6 +38,14 @@ pub:
 	typ        MessageType = .command @[json: '-']
 	cb         EventFunc   = unsafe { nil }   @[json: '-']
 	ref        voidptr     @[json: '-']
+	timeout    i64 = ch_timeout         @[json: '-']
+}
+
+fn (params MessageParams) create_timeout(tt i64) i64 {
+	if params.timeout == ch_timeout {
+		return tt
+	}
+	return params.timeout
 }
 
 pub struct Message {

@@ -67,7 +67,7 @@ pub mut:
 	index int
 }
 
-fn (mut bwr Browser) build_on_download_progress(mut data DataDownloadProgress) {
+fn (mut bwr Browser) build_on_download_progress(mut data DataDownloadProgress, opts ParamTimeout) {
 	bwr.on('Browser.downloadProgress', fn (mut msg Message, mut data DataDownloadProgress) !bool {
 		mut dp := json.decode[DownloadProgress](msg.params.str())!
 		dp.index = data.index
@@ -83,23 +83,23 @@ fn (mut bwr Browser) build_on_download_progress(mut data DataDownloadProgress) {
 		}
 		return is_done
 	}, ref: data)
-	bwr.send_event_or_noop('CDV.download')
+	bwr.send_event_or_noop('CDV.waitFor', timeout: opts.timeout)
 	bwr.off_all()
 }
 
-pub fn (mut bwr Browser) wait_for_download_progress(cb EventDownloadProgress) {
+pub fn (mut bwr Browser) wait_for_download_progress(cb EventDownloadProgress, opts ParamTimeout) {
 	mut data := &DataDownloadProgress{
 		cb: cb
 	}
-	bwr.build_on_download_progress(mut data)
+	bwr.build_on_download_progress(mut data, opts)
 }
 
-pub fn (mut bwr Browser) wait_for_download_progress_ref(cb EventDownloadProgressRef, ref voidptr) {
+pub fn (mut bwr Browser) wait_for_download_progress_ref(cb EventDownloadProgressRef, ref voidptr, opts ParamTimeout) {
 	mut data := &DataDownloadProgress{
 		cb_ref: cb
 		ref:    ref
 	}
-	bwr.build_on_download_progress(mut data)
+	bwr.build_on_download_progress(mut data, opts)
 }
 
 pub fn (_ DownloadProgress) done() bool {
@@ -118,10 +118,10 @@ pub fn (mut page Page) cancel_download(guid string) {
 	page.browser.cancel_download(guid)
 }
 
-pub fn (mut page Page) wait_for_download_progress(cb EventDownloadProgress) {
-	page.browser.wait_for_download_progress(cb)
+pub fn (mut page Page) wait_for_download_progress(cb EventDownloadProgress, opts ParamTimeout) {
+	page.browser.wait_for_download_progress(cb, opts)
 }
 
-pub fn (mut page Page) wait_for_download_progress_ref(cb EventDownloadProgressRef, ref voidptr) {
-	page.browser.wait_for_download_progress_ref(cb, ref)
+pub fn (mut page Page) wait_for_download_progress_ref(cb EventDownloadProgressRef, ref voidptr, opts ParamTimeout) {
+	page.browser.wait_for_download_progress_ref(cb, ref, opts)
 }

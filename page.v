@@ -250,3 +250,12 @@ pub fn (mut page Page) wait_until_opt(params MessageParams) ! {
 pub fn (mut page Page) wait_until(params MessageParams) {
 	page.wait_until_opt(params) or { page.noop(err) }
 }
+
+pub fn (mut page Page) wait_for(timeout i64, params MessageParams) {
+	mut method := params.method
+	if method == '' {
+		method = 'CDV.waitFor'
+	}
+	page.send_event_or_noop(method, MessageParams{ ...params, timeout: timeout })
+	page.off_all()
+}

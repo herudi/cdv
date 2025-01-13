@@ -8,6 +8,10 @@ import x.json2 as json
 import encoding.base64
 
 const def_timeout = 2 * time.second
+// ch timeout
+const ch_timeout = 58 * time.second
+// ws timeout
+const ws_timeout = 60 * time.second
 
 fn find_executable(name string) string {
 	return os.find_abs_path_of_executable(name) or { '' }

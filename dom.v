@@ -417,6 +417,11 @@ pub fn (mut el Element) screenshot(opts ScreenshotParams) Screenshot {
 	return el.page.screenshot(ScreenshotParams{ ...opts, clip: clip })
 }
 
+pub fn (mut page Page) wait_for_document_updated(params MessageParams) {
+	timeout := params.create_timeout(def_timeout)
+	page.wait_for(timeout, MessageParams{ ...params, method: 'DOM.documentUpdated' })
+}
+
 pub fn (mut el Element) str() string {
 	return el.get_outer_html()
 }

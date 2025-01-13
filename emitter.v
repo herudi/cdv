@@ -1,11 +1,5 @@
 module cdv
 
-@[params]
-pub struct ParamRef {
-pub:
-	ref voidptr
-}
-
 pub struct EmitData {
 pub:
 	method string

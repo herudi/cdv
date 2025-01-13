@@ -293,9 +293,9 @@ pub fn (mut ms Mouse) drag_and_drop(start Point, target Point, opts DragOptions)
 	ms.up()
 }
 
-pub fn (mut ms Mouse) wait_for_drag(cb EventFunc, params ParamRef) {
+pub fn (mut ms Mouse) wait_for_drag(cb EventFunc, params ParamRefTimeout) {
 	ms.page.on('Input.dragIntercepted', cb, ref: params.ref)
-	ms.page.wait_until(method: 'Input.dragIntercepted')
+	ms.page.wait_for(params.timeout)
 }
 
 @[params]

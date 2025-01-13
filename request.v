@@ -114,7 +114,7 @@ pub fn (mut req Request) redirect_response() ?Response {
 	return none
 }
 
-pub fn (mut page Page) wait_for_request(cb EventRequest) ?Request {
+pub fn (mut page Page) wait_for_request(cb EventRequest, opts ParamTimeout) ?Request {
 	mut data := &DataRequest{
 		cb: cb
 	}
@@ -125,11 +125,11 @@ pub fn (mut page Page) wait_for_request(cb EventRequest) ?Request {
 		}
 		return is_done
 	}, data)
-	page.wait_until()
+	page.wait_for(opts.timeout)
 	return data.request
 }
 
-pub fn (mut page Page) wait_for_request_ref(cb EventRequestRef, ref voidptr) ?Request {
+pub fn (mut page Page) wait_for_request_ref(cb EventRequestRef, ref voidptr, opts ParamTimeout) ?Request {
 	mut data := &DataRequest{
 		cb_ref: cb
 		ref:    ref
@@ -141,6 +141,6 @@ pub fn (mut page Page) wait_for_request_ref(cb EventRequestRef, ref voidptr) ?Re
 		}
 		return is_done
 	}, data)
-	page.wait_until()
+	page.wait_for(opts.timeout)
 	return data.request
 }
