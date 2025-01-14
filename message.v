@@ -34,18 +34,11 @@ pub:
 	id         int = -1
 	method     string
 	params     ?map[string]json.Any
-	session_id ?string     @[json: 'sessionId']
-	typ        MessageType = .command @[json: '-']
-	cb         EventFunc   = unsafe { nil }   @[json: '-']
-	ref        voidptr     @[json: '-']
-	timeout    i64 = ch_timeout         @[json: '-']
-}
-
-fn (params MessageParams) create_timeout(tt i64) i64 {
-	if params.timeout == ch_timeout {
-		return tt
-	}
-	return params.timeout
+	session_id ?string
+	timeout    ?i64
+	typ        MessageType = .command
+	cb         EventFunc   = unsafe { nil }
+	ref        voidptr
 }
 
 pub struct Message {

@@ -264,14 +264,22 @@ fn (mut bwr Browser) get_next_id(current_id int) int {
 	return id
 }
 
-pub fn (mut bwr Browser) send(method string, params MessageParams) !Result {
-	id := bwr.get_next_id(params.id)
+pub fn (mut bwr Browser) send(method string, opts MessageParams) !Result {
+	id := bwr.get_next_id(opts.id)
 	msg := MessageParams{
-		...params
+		...opts
 		method: method
 		id:     id
 	}
-	data := json.encode(msg)
+	mut data := '{"id":${id},"method":"${method}"'
+	if params_map := msg.params {
+		params := params_map.str()
+		data += ',"params":${params}'
+	}
+	if session_id := msg.session_id {
+		data += ',"sessionId":"${session_id}"'
+	}
+	data += '}'
 	bwr.ws.write_string(data)!
 	return bwr.recv_method(msg)!
 }
@@ -294,7 +302,7 @@ fn (mut bwr Browser) recv_method(params MessageParams) !Result {
 	mut t_error := map[string]json.Any{}
 	mut is_error := false
 	mut is_done := false
-	mut release := params.timeout
+	mut release := params.timeout or { bwr.timeout }
 	mut timeout := release
 	for {
 		select {

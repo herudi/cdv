@@ -3,22 +3,15 @@ module cdv
 import x.json2 as json
 import time
 
-@[params]
-pub struct MouseParams {
-pub:
-	keyboard ?&Keyboard
-}
-
-pub fn (mut page Page) use_mouse(opts MouseParams) &Mouse {
-	mut keyboard := unsafe { nil }
-	if kb := opts.keyboard {
-		keyboard = kb
-	} else {
-		keyboard = page.use_keyboard()
-	}
-	return &Mouse{
-		keyboard: keyboard
-		page:     page
+pub fn (mut page Page) use_mouse() &Mouse {
+	return page.mouse or {
+		kb := page.use_keyboard()
+		mouse := &Mouse{
+			keyboard: kb
+			page:     page
+		}
+		page.mouse = mouse
+		return mouse
 	}
 }
 

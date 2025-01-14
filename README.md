@@ -53,6 +53,8 @@ page.on_response(fn (mut res cdv.Response) !bool {
 
 // wait until load event fired. default to `Page.loadEventFired`.
 page.wait_until()
+// or use `page.wait_for(2 * time.second)`
+// note: timeout in `page.wait_for`, is debouncing from queue of cdp responses.
 
 // code here for other method.
 

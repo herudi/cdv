@@ -122,7 +122,7 @@ pub fn (mut el Element) get(key string) string {
 	return el.eval('${el.data}.${key}').str()
 }
 
-pub fn (mut el Element) write(key string) {
+pub fn (mut el Element) set(key string) {
 	el.eval('${el.data}.${key}')
 }
 
@@ -175,7 +175,7 @@ pub fn (mut el Element) click() {
 
 pub fn (mut el Element) set_style(key string, val json.Any) {
 	value := json.encode(val)
-	el.write('style.${key}=${value}')
+	el.set('style.${key}=${value}')
 }
 
 pub fn (mut el Element) set_outer_html(val string) {
@@ -197,7 +197,7 @@ pub fn (mut el Element) get_outer_html(opts WithBackendParams) string {
 }
 
 pub fn (mut el Element) set_inner_html(val string) {
-	el.write('innerHTML=`${val}`')
+	el.set('innerHTML=`${val}`')
 }
 
 pub fn (mut el Element) get_inner_html() string {
@@ -205,7 +205,7 @@ pub fn (mut el Element) get_inner_html() string {
 }
 
 pub fn (mut el Element) set_text_content(val string) {
-	el.write('textContent=`${val}`')
+	el.set('textContent=`${val}`')
 }
 
 pub fn (mut el Element) get_text_content() string {
@@ -213,7 +213,7 @@ pub fn (mut el Element) get_text_content() string {
 }
 
 pub fn (mut el Element) set_value(val string) {
-	el.write('value=`${val}`')
+	el.set('value=`${val}`')
 }
 
 pub fn (mut el Element) get_value() string {
@@ -264,7 +264,7 @@ pub fn (mut el Element) get_attr(key string) string {
 }
 
 pub fn (mut el Element) remove_attr(key string) {
-	el.write('removeAttribute(`${key}`)')
+	el.set('removeAttribute(`${key}`)')
 }
 
 pub fn (mut el Element) get_attrs() []string {
@@ -418,8 +418,14 @@ pub fn (mut el Element) screenshot(opts ScreenshotParams) Screenshot {
 }
 
 pub fn (mut page Page) wait_for_document_updated(params MessageParams) {
-	timeout := params.create_timeout(def_timeout)
+	timeout := params.timeout or { def_timeout }
 	page.wait_for(timeout, MessageParams{ ...params, method: 'DOM.documentUpdated' })
+}
+
+pub fn (mut el Element) focus_and_click(opts WithBackendParams) {
+	el.focus(opts)
+	mut kb := el.page.use_keyboard()
+	kb.press('Enter')
 }
 
 pub fn (mut el Element) str() string {

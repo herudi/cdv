@@ -11,8 +11,12 @@ pub mut:
 }
 
 pub fn (mut page Page) use_keyboard() &Keyboard {
-	return &Keyboard{
-		page: page
+	return page.keyboard or {
+		kb := &Keyboard{
+			page: page
+		}
+		page.keyboard = kb
+		return kb
 	}
 }
 

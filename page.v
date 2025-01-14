@@ -10,8 +10,11 @@ pub mut:
 	target_id  string
 	browser    &Browser = unsafe { nil }
 	session_id string
-	deps       []string
 	var_id     int = 1
+	deps       []string
+mut:
+	keyboard ?&Keyboard
+	mouse    ?&Mouse
 }
 
 pub fn (mut page Page) str() string {
